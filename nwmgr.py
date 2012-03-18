@@ -5,13 +5,6 @@ from message import *
 from socket import *
 import SocketServer
 
-class RequestHandler(SocketServer.BaseRequestHandler):
-    def handle(self):
-        self.data = self.request.recv(1024)
-        print "Received : " + self.data
-        msg = Message(self.data)
-        
-
 class nwManager:
 
     def __init__(self, localPort, neighborList):
@@ -19,12 +12,7 @@ class nwManager:
         self.conn = {}
         for n in neighborList:
             self.neighbors[n] = 0
-            self.conn[n] = socket(AF_INET, SOCK_STREAM)
-            neighborIP = n.split(":")[0]
-            (neighborHostname,x,y) = gethostbyaddr(neighborIP)
-            neighborPort = int(n.split(":")[1])
-            print neighborHostname
-            self.conn[n].connect((neighborHostname, neighborPort))
+            self.conn[n] = createConn(n)
         self.available = []
         self.port = localPort
         self.nodeId = 8
@@ -38,25 +26,46 @@ class nwManager:
 
     def sendToNeighbors(self, msg):
         for key in self.conn:
-            print "Trying to send to : " + key
             self.conn[key].send(msg)
 
-    def start(self):
-        initMsg = self.createNewMessage("NEIGHBOR_CONN", ("127.0.0.1:" + str(self.port)))
+    def startManager(self):
+        initMsg = self.createNewMessage("NEIGHBOR_INIT", ("127.0.0.1:" + str(self.port)))
         self.sendToNeighbors(initMsg)
         server = socket(AF_INET, SOCK_STREAM)
         server.bind(('', self.port))
         server.listen(5)
         while True:
             client, addr = server.accept()
-            print "Received : " + client.recv(1024)
-            client.close()
-        #server = SocketServer.TCPServer(("localhost", self.port), RequestHandler)
-        #server.serve_forever()       
+            self.handleMessage(client.recv(4096), client)
+        
+    def handleMessage(self, msgStr, client):
+        print "Received : " + msgStr
+        msg = Message(msgStr)
+        if msg.type == "NEIGHBOR_INIT":
+            self.neighbors[msg.data] = 0
+            self.conn[msg.data] = client
+        elif msg.type == "HEARTBEAT":
+            # Handle HeartBeat Message
+            pass
+        elif msg.type == "RES_AVL":
+            # Handle Resource Available Message
+            pass
+        elif msg.type == "RES_UNAVL":
+            # Handle Resource Unavailable Message
+            pass
+
+# Helper Routines
+def createConn(n):
+    sock = socket(AF_INET, SOCK_STREAM)
+    neighborIP = n.split(":")[0]
+    (neighborHostname,alias,addrlist) = gethostbyaddr(neighborIP)
+    neighborPort = int(n.split(":")[1])
+    sock.connect((neighborHostname, neighborPort))
+    return sock
  
 def main():
     mgr = nwManager(int(sys.argv[1]), [])
-    mgr.start()
+    mgr.startManager()
 
 if __name__ == "__main__":
     main()
