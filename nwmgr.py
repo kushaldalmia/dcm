@@ -40,16 +40,17 @@ class nwManager:
         
         # Initalize listening socket
         server = socket(AF_INET, SOCK_STREAM)
+        server.setblocking(0)
         server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         server.bind(('', self.port))
         server.listen(5)
-        server.settimeout(1)
-
+        
         # Main Server Loop
         while True:
             try:
                 client, addr = server.accept()
-                self.handleMessage(client.recv(4096))
+                data = client.recv(4096)
+                self.handleMessage(data)
             except:
                 pass
             self.handleTimeouts()
@@ -82,7 +83,7 @@ class nwManager:
                     # Send RES_UNAVL if resource was available
                 else:
                     print "No Heartbeat from " + n
-                    neighbors[n] = (curTime, count + 1)
+                    self.neighbors[n] = (curTime, count + 1)
             
     def sendHeartBeats(self):
         curTime = time.time()
