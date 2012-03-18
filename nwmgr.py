@@ -21,9 +21,10 @@ class nwManager:
             self.neighbors[n] = 0
             self.conn[n] = socket(AF_INET, SOCK_STREAM)
             neighborIP = n.split(":")[0]
-            neighborHostname = gethostbyaddr(neighborIP)
+            (neighborHostname,x,y) = gethostbyaddr(neighborIP)
             neighborPort = int(n.split(":")[1])
-            self.conn[n].connect(neighborHostname, neighborPort)
+            print neighborHostname
+            self.conn[n].connect((neighborHostname, neighborPort))
         self.available = []
         self.port = localPort
         self.nodeId = 8
@@ -37,16 +38,24 @@ class nwManager:
 
     def sendToNeighbors(self, msg):
         for key in self.conn:
+            print "Trying to send to : " + key
             self.conn[key].send(msg)
 
     def start(self):
         initMsg = self.createNewMessage("NEIGHBOR_CONN", ("127.0.0.1:" + str(self.port)))
         self.sendToNeighbors(initMsg)
-        server = SocketServer.TCPServer(("localhost", self.port), RequestHandler)
-        server.serve_forever()       
+        server = socket(AF_INET, SOCK_STREAM)
+        server.bind(('', self.port))
+        server.listen(5)
+        while True:
+            client, addr = server.accept()
+            print "Received : " + client.recv(1024)
+            client.close()
+        #server = SocketServer.TCPServer(("localhost", self.port), RequestHandler)
+        #server.serve_forever()       
  
 def main():
-    mgr = nwManager(1337, "")
+    mgr = nwManager(int(sys.argv[1]), [])
     mgr.start()
 
 if __name__ == "__main__":
