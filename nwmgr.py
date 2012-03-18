@@ -40,7 +40,7 @@ class nwManager:
             self.conn[key].send(msg)
 
     def start(self):
-        initMsg = createNewMessage("NEIGHBOR_CONN", ("127.0.0.1:" + self.port))
+        initMsg = self.createNewMessage("NEIGHBOR_CONN", ("127.0.0.1:" + str(self.port)))
         self.sendToNeighbors(initMsg)
         server = SocketServer.TCPServer(("localhost", self.port), RequestHandler)
         server.serve_forever()       
