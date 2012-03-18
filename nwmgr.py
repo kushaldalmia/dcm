@@ -31,21 +31,21 @@ class nwManager:
 
     def startManager(self):
         initMsg = self.createNewMessage("NEIGHBOR_INIT", (self.localIP + ":" + str(self.port)))
-        print initMsg
         self.sendToNeighbors(initMsg)
         server = socket(AF_INET, SOCK_STREAM)
         server.bind(('', self.port))
         server.listen(5)
         while True:
             client, addr = server.accept()
-            self.handleMessage(client.recv(4096), client)
+            self.handleMessage(client.recv(4096))
         
-    def handleMessage(self, msgStr, client):
+    def handleMessage(self, msgStr):
         print "Received : " + msgStr
         msg = Message(msgStr)
         if msg.type == "NEIGHBOR_INIT":
             self.neighbors[msg.data] = 0
-            self.conn[msg.data] = client
+            self.conn[msg.data] = createConn(msg.data)
+            print "Added new node to neighbor " + msg.data
         elif msg.type == "HEARTBEAT":
             # Handle HeartBeat Message
             pass
