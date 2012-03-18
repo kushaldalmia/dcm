@@ -15,6 +15,7 @@ class nwManager:
             self.conn[n] = createConn(n)
         self.available = []
         self.port = localPort
+        self.localIP = getLocalIP()
         self.nodeId = 8
         self.seqno = 1
         self.ttl = 32
@@ -29,7 +30,8 @@ class nwManager:
             self.conn[key].send(msg)
 
     def startManager(self):
-        initMsg = self.createNewMessage("NEIGHBOR_INIT", ("127.0.0.1:" + str(self.port)))
+        initMsg = self.createNewMessage("NEIGHBOR_INIT", (self.localIP + ":" + str(self.port)))
+        print initMsg
         self.sendToNeighbors(initMsg)
         server = socket(AF_INET, SOCK_STREAM)
         server.bind(('', self.port))
@@ -62,6 +64,11 @@ def createConn(n):
     neighborPort = int(n.split(":")[1])
     sock.connect((neighborHostname, neighborPort))
     return sock
+
+def getLocalIP():
+    s = socket(AF_INET, SOCK_DGRAM)
+    s.connect(('google.com', 0))
+    return s.getsockname()[0]
  
 def main():
     mgr = nwManager(int(sys.argv[1]), [])
