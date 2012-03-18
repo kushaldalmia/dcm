@@ -2,6 +2,7 @@ import sys
 import os
 import time
 from message import *
+from socket import *
 import SocketServer
 
 class RequestHandler(SocketServer.BaseRequestHandler):
@@ -11,18 +12,36 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         msg = Message(self.data)
         
 
-# To initialize a nwManager, it should be passed the local port and a list of neighbors of the form "IP:Port"
 class nwManager:
 
     def __init__(self, localPort, neighborList):
-        curTime = str(time.time())
         self.neighbors = {}
+        self.conn = {}
         for n in neighborList:
-            self.neighbors[n] = curTime
+            self.neighbors[n] = 0
+            self.conn[n] = socket(AF_INET, SOCK_STREAM)
+            neighborIP = n.split(":")[0]
+            neighborHostname = gethostbyaddr(neighborIP)
+            neighborPort = int(n.split(":")[1])
+            self.conn[n].connect(neighborHostname, neighborPort)
         self.available = []
         self.port = localPort
+        self.nodeId = 8
+        self.seqno = 1
+        self.ttl = 32
+
+    def createNewMessage(self, msgType, data):
+        msg = str(self.nodeId) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        self.seqno += 1
+        return msg
+
+    def sendToNeighbors(self, msg):
+        for key in self.conn:
+            self.conn[key].send(msg)
 
     def start(self):
+        initMsg = createNewMessage("NEIGHBOR_CONN", ("127.0.0.1:" + self.port))
+        self.sendToNeighbors(initMsg)
         server = SocketServer.TCPServer(("localhost", self.port), RequestHandler)
         server.serve_forever()       
  
