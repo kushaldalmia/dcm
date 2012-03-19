@@ -4,7 +4,7 @@ create table Nodes(
 	ref_count integer not null,
 	ip_add string not null,
 	port integer not null,
-	primary key(ip_add, port) 
+	primary key(node_id,ip_add, port) 
 );
 
 drop table if exists NodeMap;
