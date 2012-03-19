@@ -153,7 +153,7 @@ def register(ip_add=None, port_no=None):
 	elif no_entries <= 3:
 		dict = [{}]
 		cnt = 0
-		dict[0]['count'] = (no_entries)%3 + 1
+		dict[0]['count'] = (no_entries)
 		dict[0]['my_nodeid'] = node_id
 		for node in nodes_entries:
 			cnt = cnt + 1
@@ -187,7 +187,7 @@ def register(ip_add=None, port_no=None):
 	else:
 		dict = [{}]
 		cnt = 0
-		dict[0]['count'] = no_entries%3 + 1
+		dict[0]['count'] = 3
 		dict[0]['my_nodeid'] = node_id
 		for node in nodes_entries:
 			cnt = cnt + 1
