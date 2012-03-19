@@ -54,10 +54,7 @@ class nwManager:
         curTime = time.time()
         initMsg = self.createNewMessage("NEIGHBOR_INIT", (self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(initMsg)
-        for key in self.neighbors:
-            self.neighbors[key] = (None, 0)
-            
-        
+               
         # Initalize listening socket
         server = socket(AF_INET, SOCK_STREAM)
         server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
