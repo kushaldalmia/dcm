@@ -2,8 +2,8 @@
 from flask import Flask,flash, request,render_template, Response,session,g
 from flask import Flask, request, session, g, redirect, url_for, \
                   abort, render_template, flash, Response, send_file
-from PIL import Image
 from contextlib import closing
+import json
 import StringIO, json, hashlib, random, os , base64, time, math, sqlite3, sys
 import urllib, urllib2, datetime
 
@@ -30,7 +30,6 @@ def connect_db():
 
 def init_db():
 	print "Attempting to create the databse "
-	print DATABASE
         with closing(connect_db()) as db:
                 with app.open_resource('schema.sql') as f:
 			print f
@@ -41,8 +40,6 @@ def init_db():
 @app.before_request
 def before_request():
         g.db = connect_db()
-	print "Got the handle for G"
-	print g.db
 
 @app.teardown_request
 def teardown_request(exception):
@@ -61,13 +58,170 @@ def query_db(query, args=(), one=False):
 def hello():
 	return "Nice try, But this is a bootstrap server, Try an extension to the URL"
 	
+## Register the IP and Port for the server, and assign it an ID.
+# if the server:port is already registered, then return the previously assigned
+# id.
 @app.route("/register/<ip_add>/<port_no>/", methods =['GET','POST'])
 def register(ip_add=None, port_no=None):
-	print "register !" 
-	print 30 * "*"
-	print "request received to register Ip" + ip_add + "and Port" + port_no
-	return "SUCCESS!"
+	print 50 * '-'
+	print "request received to register \n Ip: " + ip_add + "\n Port :" + port_no
+	print 50 * '-'
+	db_str = ip_add.strip() + ":" + port_no.strip()
 	
+	is_new = False 
+	# See if the IP:PORT is already registered 
+	id_list = query_db('select node_id from NodeMap where ip_port=?',[db_str])
+	print id_list
+	node_id = 0
+	
+	if id_list == []:
+		# This means we have a new member being registered
+		is_new = True
+		
+		# now register the new guy into the NodeMap table
+		try :
+			print "Inserting the Node into NodeMap"
+			g.db.execute('insert into NodeMap (ip_port)'\
+				' values (?)',
+				[db_str])
+			g.db.commit()
+			node_list = query_db('select node_id from NodeMap where ip_port=?',
+				[db_str])
+			node_id = node_list[0]['node_id']
+			print "node id is "
+			print node_id
+
+		except sqlite3.IntegrityError:
+			print "DUPLICATE ENTRY: Node already registered"
+
+		except sqlite3.OperationalError, msg:
+			print "Operational error "
+			print msg	
+
+		except  :
+			print "DBINSERT_FAIL: some issue while registering new node"
+
+	else :
+		# Now we know that this node was already registered 
+		print " DUP_REGREQ:The node with ip "+ ip_add + " has  id\
+			 :" + str(id_list[0]['node_id'])
+		node_id = id_list[0]['node_id']
+
+	# Need to find out How many entries does the Nodes table has
+	no_entries = query_db('select Count(*) from Nodes')
+	no_entries = no_entries[0]['Count(*)']
+	nodes_entries = query_db('SELECT * FROM Nodes where node_id!=? ORDER BY ref_count',
+				[node_id])
+
+	print "DIAG ---------------"
+	ref_count = 0
+	
+	# Now that we have the entries in the database, lets put our entry
+	# into the database
+	if is_new :
+		ref_count = 0	
+	
+		# Insert this NEW entry into the database
+		try:
+			g.db.execute('insert into Nodes (node_id, ref_count, ip_add, port)\
+					values (?,?,?,?)', 
+					[node_id, ref_count,ip_add, port_no] )
+			g.db.commit()		
+		except :
+			print "NODE_INSERT_ERR: issue while inserting node into database"
+			pass
+
+                # we might never need the follwing.	
+		# Happens only when some node tries to re-register
+		# Will be a @TODO item
+#	else :
+#
+#		tmp_results = query_db('select ref_count from Nodes where port=? and ip_add=?',
+#				[int(port_no),ip_add])
+#		if tmp_results == []:
+#			ref_count = 0;
+#		else : 
+#			ref_count = int(tmp_results[0]['ref_count']) + 1;
+#		
+#		# Update the already existing entry in the table
+
+	
+	print nodes_entries
+	if no_entries == 0:
+		return 'FIRST_NODE'
+
+	elif no_entries <= 3:
+		dict = [{}]
+		cnt = 0
+		dict[0]['count'] = no_entries
+		for node in nodes_entries:
+			cnt = cnt + 1
+			print node
+			dict.append({})
+			dict[cnt]['node_id'] = node['node_id']
+			dict[cnt]['ip_add'] = node['ip_add']
+			dict[cnt]['port']  = node['port']
+			# update the refcount of the existing entry
+			tmp_results = query_db('select ref_count from Nodes where port=? and ip_add=?',
+					[node['port'],node['ip_add']])
+			refcount = 0;
+			print " TMP RES"
+			print tmp_results
+
+			if tmp_results == []:
+				refcount = 0;
+			else : 
+				refcount = int(tmp_results[0]['ref_count']) + 1;
+			print "Refcount is : "
+			print refcount
+			try :
+				g.db.execute('update Nodes set ref_count=? where port=? and ip_add=?',
+						[refcount, int(node['port']), str(node['ip_add'])])
+				g.db.commit()	
+			except :
+				print "ERROR while updating refcount !"
+				return  "SVR_ERR"
+
+		return json.dumps(dict)
+	else:
+		dict = [{}]
+		cnt = 0
+		dict[0]['count'] = no_entries
+		for node in nodes_entries:
+			cnt = cnt + 1
+			print node
+			dict.append({})
+			dict[cnt]['node_id'] = node['node_id']
+			dict[cnt]['ip_add'] = node['ip_add']
+			dict[cnt]['port']  = node['port']
+			# update the refcount of the existing entry
+			tmp_results = query_db('select ref_count from Nodes where port=? and ip_add=?',
+					[node['port'],node['ip_add']])
+			if tmp_results == []:
+				refcount = 0;
+			else : 
+				refcount = int(tmp_results[0]['ref_count']) + 1;
+			print "Refcount is : "
+			print refcount
+			try :
+				g.db.execute('update Nodes set ref_count=? where port=? and ip_add=?',
+						[refcount, int(node['port']), str(node['ip_add'])])
+				g.db.commit()	
+			except :
+				print "ERROR while updating refcount !"
+				return  "SVR_ERR"
+
+
+			if cnt == 3:
+				return json.dumps(dict)
+
+	
+	g.db.commit()
+	return db_str
+	
+@app.route("/deregister/<ip_add>/<port_no>/")
+def handle_dead(ip_add=None, port_no=None):
+	return "FAIL"
 
 
 if __name__== "__main__":
