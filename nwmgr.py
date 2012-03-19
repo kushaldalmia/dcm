@@ -6,12 +6,15 @@ from socket import *
 import SocketServer
 import threading
 
-
 def connHandler(manager, client):
     while True:
-        data = client.recv(4096)
-        if manager.handleMessage(data, client) == False:
-            return
+        try:
+            data = client.recv(4096)
+            if manager.handleMessage(data, client) == False:
+                # Remove conn from manager neighbor list
+                return
+        except:
+            pass
 
 def acceptConn(manager, server):
     manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
@@ -34,6 +37,9 @@ def handleTimeout(manager, node):
         print "Send RES_UNAVL!"
     else:
         print "No Heartbeat from neighbor!"
+        timer.cancel()
+        timer = threading.Timer(10,handleTimeout, args=(manager, node,))
+        timer.start()
         manager.neighbors[node] = (timer, count + 1)
 
 class nwManager:
@@ -71,11 +77,16 @@ class nwManager:
         
     def sendToNeighbors(self, msg):
         for key in self.conn:
-            self.conn[key].send(msg)
+            try:
+                self.conn[key].send(msg)
+            except:
+                pass
 
     def handleMessage(self, msgStr, client):
-        print "Received : " + msgStr
+        if len(msgStr) == 0:
+            return True
         msg = Message(msgStr)
+        print "Received : " + msgStr
         curTime = time.time()
 
         if msg.type == "NEIGHBOR_INIT":
