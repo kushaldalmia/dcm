@@ -146,7 +146,7 @@ def getLocalIP():
     return s.getsockname()[0]
  
 def main():
-    mgr = nwManager(int(sys.argv[1]), [], 1)
+    mgr = nwManager(int(sys.argv[1]), ['128.237.126.240:1337','128.237.227.40:1415'], 1)
     mgr.startManager()
     while True:
         continue

@@ -153,7 +153,8 @@ def register(ip_add=None, port_no=None):
 	elif no_entries <= 3:
 		dict = [{}]
 		cnt = 0
-		dict[0]['count'] = no_entries
+		dict[0]['count'] = (no_entries)%3 + 1
+		dict[0]['my_nodeid'] = node_id
 		for node in nodes_entries:
 			cnt = cnt + 1
 			print node
@@ -186,7 +187,8 @@ def register(ip_add=None, port_no=None):
 	else:
 		dict = [{}]
 		cnt = 0
-		dict[0]['count'] = no_entries
+		dict[0]['count'] = no_entries%3 + 1
+		dict[0]['my_nodeid'] = node_id
 		for node in nodes_entries:
 			cnt = cnt + 1
 			print node
@@ -228,5 +230,5 @@ if __name__== "__main__":
 
         if len(sys.argv) > 1 and sys.argv[1].strip() == 'init_db': init_db()
         if len(sys.argv) > 1 and sys.argv[1].strip() == 'remake_db': pass#init_db()
-	app.run()
+	app.run(host='0.0.0.0' )
 
