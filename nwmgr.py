@@ -14,8 +14,8 @@ def connHandler(manager, client):
             return
 
 def acceptConn(manager, server):
-    hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
-    hbtTimer.start()
+    manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
+    manager.hbtTimer.start()
     while True:
         client, addr = server.accept()
         t = threading.Thread(target=connHandler, args=(manager, client,))
@@ -24,6 +24,9 @@ def acceptConn(manager, server):
 def sendHeartBeats(manager):
     hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
     manager.sendToNeighbors(hbtMsg)
+    manager.hbtTimer.cancel()
+    manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
+    manager.hbtTimer.start()
 
 def handleTimeout(manager, node):
     timer, count = manager.neighbors[node]
@@ -40,6 +43,7 @@ class nwManager:
         for n in neighborList:
             self.conn[n] = createConn(n)
             aliveTimer = threading.Timer(10,handleTimeout, args=(self, n,))
+            aliveTimer.start()
             self.neighbors[n] = (aliveTimer,0)
             t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
             t.start()
@@ -76,6 +80,7 @@ class nwManager:
 
         if msg.type == "NEIGHBOR_INIT":
             aliveTimer = threading.Timer(10,handleTimeout, args=(self, msg.data,))
+            aliveTimer.start()
             self.neighbors[msg.data] = (aliveTimer, 0)
             self.conn[msg.data] = client
             print "Added new node to neighbor " + msg.data
@@ -87,6 +92,7 @@ class nwManager:
             aliveTimer, count = self.neighbors[msg.data]
             aliveTimer.cancel()
             aliveTimer = threading.Timer(10,handleTimeout, args=(self, msg.data,))
+            aliveTimer.start()
             self.neighbors[msg.data] = (aliveTimer, 0)
 
         elif msg.type == "RES_AVL":
