@@ -4,94 +4,109 @@ import time
 from message import *
 from socket import *
 import SocketServer
+import threading
+
+
+def connHandler(manager, client):
+    while True:
+        data = client.recv(4096)
+        if manager.handleMessage(data, client) == False:
+            return
+
+def acceptConn(manager, server):
+    hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
+    hbtTimer.start()
+    while True:
+        client, addr = server.accept()
+        t = threading.Thread(target=connHandler, args=(manager, client,))
+        t.start()
+
+def sendHeartBeats(manager):
+    hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
+    manager.sendToNeighbors(hbtMsg)
+
+def handleTimeout(manager, node):
+    timer, count = manager.neighbors[node]
+    if count > 2:
+        print "Send RES_UNAVL!"
+    else:
+        print "No Heartbeat from neighbor!"
+        manager.neighbors[node] = (timer, count + 1)
 
 class nwManager:
-
-    def __init__(self, localPort, neighborList):
+    def __init__(self, localPort, neighborList, nodeId):
         self.neighbors = {}
         self.conn = {}
         for n in neighborList:
-            self.neighbors[n] = (0,0)
             self.conn[n] = createConn(n)
+            aliveTimer = threading.Timer(10,handleTimeout, args=(self, n,))
+            self.neighbors[n] = (aliveTimer,0)
+            t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
+            t.start()
         self.available = []
         self.port = localPort
         self.localIP = getLocalIP()
-        self.nodeId = 8
+        self.nodeId = nodeId
         self.seqno = 1
         self.ttl = 32
-        self.heartbeatTime = 0.0
-
-    def createNewMessage(self, msgType, data):
-        msg = str(self.nodeId) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
-        self.seqno += 1
-        return msg
-
-    def sendToNeighbors(self, msg):
-        for key in self.conn:
-            self.conn[key].send(msg)
 
     def startManager(self):
         curTime = time.time()
         initMsg = self.createNewMessage("NEIGHBOR_INIT", (self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(initMsg)
         for key in self.neighbors:
-            self.neighbors[key] = (curTime, 0)
-        self.heartbeatTime = curTime
+            self.neighbors[key] = (None, 0)
+            
         
         # Initalize listening socket
         server = socket(AF_INET, SOCK_STREAM)
-        server.setblocking(0)
         server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         server.bind(('', self.port))
         server.listen(5)
+
+        t = threading.Thread(target=acceptConn, args=(self, server,))
+        t.start()
+
         
-        # Main Server Loop
-        while True:
-            try:
-                client, addr = server.accept()
-                data = client.recv(4096)
-                self.handleMessage(data)
-            except:
-                pass
-            self.handleTimeouts()
-            self.sendHeartBeats()            
-        
-    def handleMessage(self, msgStr):
+    def sendToNeighbors(self, msg):
+        for key in self.conn:
+            self.conn[key].send(msg)
+
+    def handleMessage(self, msgStr, client):
         print "Received : " + msgStr
         msg = Message(msgStr)
         curTime = time.time()
+
         if msg.type == "NEIGHBOR_INIT":
-            self.neighbors[msg.data] = (curTime, 0)
-            self.conn[msg.data] = createConn(msg.data)
+            aliveTimer = threading.Timer(10,handleTimeout, args=(self, msg.data,))
+            self.neighbors[msg.data] = (aliveTimer, 0)
+            self.conn[msg.data] = client
             print "Added new node to neighbor " + msg.data
+
+        elif self.neighbors[msg.data] == None:
+            return False
+
         elif msg.type == "HEARTBEAT":
-            self.neighbors[msg.data] = (curTime, 0)
+            aliveTimer, count = self.neighbors[msg.data]
+            aliveTimer.cancel()
+            aliveTimer = threading.Timer(10,handleTimeout, args=(self, msg.data,))
+            self.neighbors[msg.data] = (aliveTimer, 0)
+
         elif msg.type == "RES_AVL":
             # Handle Resource Available Message
             pass
+
         elif msg.type == "RES_UNAVL":
             # Handle Resource Unavailable Message
             pass
-    
-    def handleTimeouts(self):
-        curTime = time.time()
-        for n in self.neighbors:
-            timestamp, count = self.neighbors[n]
-            if curTime - timestamp > 10.0:
-                if count == 2:
-                    print "Node " + n + "Failed!"
-                    # Send RES_UNAVL if resource was available
-                else:
-                    print "No Heartbeat from " + n
-                    self.neighbors[n] = (curTime, count + 1)
+        return True
             
-    def sendHeartBeats(self):
-        curTime = time.time()
-        if curTime - self.heartbeatTime > 10.0:
-            hbtMsg = self.createNewMessage("HEARTBEAT", (self.localIP + ":" + str(self.port)))
-            self.sendToNeighbors(hbtMsg)
-            self.heartbeatTime = curTime
-        
+    
+    def createNewMessage(self, msgType, data):
+        msg = str(self.nodeId) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        self.seqno += 1
+        return msg
+
 
 # Helper Routines
 def createConn(n):
@@ -108,8 +123,10 @@ def getLocalIP():
     return s.getsockname()[0]
  
 def main():
-    mgr = nwManager(int(sys.argv[1]), [])
+    mgr = nwManager(int(sys.argv[1]), [], 1)
     mgr.startManager()
+    while True:
+        continue
 
 if __name__ == "__main__":
     main()
