@@ -35,9 +35,11 @@ def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
     if count > 2:
-        print "Send RES_UNAVL!"
+        print "Send RES_UNAVL for node " + node + "!"
+        timer.cancel()
+        del manager.neighbors[node]
     else:
-        print "No Heartbeat from neighbor!"
+        print "No Heartbeat from neighbor " + node + "!"
         timer.cancel()
         timer = threading.Timer(10,handleTimeout, args=(manager, node,))
         timer.start()
