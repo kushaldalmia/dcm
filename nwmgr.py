@@ -55,6 +55,7 @@ class nwManager:
         self.conn = {}
         self.lock = threading.Lock()
         for n in neighborList:
+            print "Neighbor is: " + n
             self.conn[n] = createConn(n)
             aliveTimer = threading.Timer(10,handleTimeout, args=(self, n,))
             aliveTimer.start()
