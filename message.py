@@ -5,7 +5,7 @@ class Message:
 
     def __init__(self, msgStr):
         msgFields = msgStr.split("-")
-        self.sender = int(msgFields[0])
+        self.sender = msgFields[0]
         self.seqno = int(msgFields[1])
         self.ttl = int(msgFields[2])
         self.type = msgFields[3]

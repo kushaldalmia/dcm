@@ -6,13 +6,13 @@ from socket import *
 import SocketServer
 import threading
 
-def connHandler(manager, client, node):
+def connHandler(manager, client):
     while True:
         try:
             data = client.recv(4096)
-            manager.handleMessage(data, client, node)
+            manager.handleMessage(data, client)
         except:
-            print "Killing thread for " + node
+            print "Killing thread!"
             return
 
 def acceptConn(manager, server):
@@ -58,7 +58,7 @@ class nwManager:
             aliveTimer = threading.Timer(10,handleTimeout, args=(self, n,))
             aliveTimer.start()
             self.neighbors[n] = (aliveTimer,0)
-            t = threading.Thread(target=connHandler, args=(self, self.conn[n],n, ))
+            t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
             t.start()
         self.available = []
         self.port = localPort
@@ -120,10 +120,10 @@ class nwManager:
 
         elif msg.type == "RES_UNAVL":
             # Handle Resource Unavailable Message
-            self.sendExceptSource(msg.toString(), node)            
+            self.sendExceptSource(msg.toString(), msg.sender)            
     
     def createNewMessage(self, msgType, data):
-        msg = str(self.nodeId) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        msg = str(self.localIP + ":" + str(self.port)) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         self.seqno += 1
         return msg
 
@@ -152,7 +152,7 @@ def getLocalIP():
     return s.getsockname()[0]
  
 def main():
-    mgr = nwManager(int(sys.argv[1]), ['128.237.126.240:1337','128.237.227.40:1415'], 1)
+    mgr = nwManager(int(sys.argv[1]), [], 1)
     mgr.startManager()
     while True:
         continue
