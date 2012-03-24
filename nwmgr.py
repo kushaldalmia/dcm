@@ -12,9 +12,8 @@ def connHandler(manager, client):
             data = client.recv(4096)
             manager.handleMessage(data, client)
         except:
-            print "Killing thread!"
             return
-
+            
 def acceptConn(manager, server):
     manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
     manager.hbtTimer.start()
@@ -89,7 +88,7 @@ class nwManager:
             except:
                 pass
 
-    def handleMessage(self, msgStr, client, node):
+    def handleMessage(self, msgStr, client):
         if len(msgStr) == 0:
             return
         msg = Message(msgStr)
