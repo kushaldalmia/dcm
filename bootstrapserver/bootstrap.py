@@ -69,6 +69,7 @@ def register(ip_add=None, port_no=None):
 	db_str = ip_add.strip() + ":" + port_no.strip()
 	
 	is_new = False 
+
 	# See if the IP:PORT is already registered 
 	id_list = query_db('select node_id from NodeMap where ip_port=?',[db_str])
 	print id_list
@@ -112,8 +113,6 @@ def register(ip_add=None, port_no=None):
 	no_entries = no_entries[0]['Count(*)']
 	nodes_entries = query_db('SELECT * FROM Nodes where node_id!=? ORDER BY ref_count',
 				[node_id])
-
-	print "DIAG ---------------"
 	ref_count = 0
 	
 	# Now that we have the entries in the database, lets put our entry
@@ -177,6 +176,9 @@ def register(ip_add=None, port_no=None):
 				g.db.execute('update Nodes set ref_count=? where port=? and ip_add=?',
 						[refcount, int(node['port']), str(node['ip_add'])])
 				g.db.commit()	
+				g.db.execute('update Nodes set ref_count=? where port=? and ip_add =?',\
+					[no_entries, str(port_no), str(ip_add)] )
+				g.db.commit()	
 			except :
 				print "ERROR while updating refcount !"
 				return  "SVR_ERR"
@@ -204,6 +206,9 @@ def register(ip_add=None, port_no=None):
 				g.db.execute('update Nodes set ref_count=? where port=? and ip_add=?',
 						[refcount, int(node['port']), str(node['ip_add'])])
 				g.db.commit()	
+				g.db.execute('update Nodes set ref_count=? where port=? and ip_add =?',\
+					[3, str(port_no), str(ip_add)] )
+				g.db.commit()	
 			except :
 				print "ERROR while updating refcount !"
 				return  "SVR_ERR"
@@ -216,10 +221,50 @@ def register(ip_add=None, port_no=None):
 	g.db.commit()
 	return db_str
 	
-@app.route("/deregister/<ip_add>/<port_no>/")
-def handle_dead(ip_add=None, port_no=None):
-	return "FAIL"
+@app.route("/unregister/<remote_ip>/<remote_port>/<ip_add>/<port_no>/")
+def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
+	db_str = ip_add.strip() + ":" + port_no.strip()
+	print db_str
+	id_list = query_db('select node_id from NodeMap where ip_port=?',[db_str])
+	
+	if id_list == []:
+		print "Node is not in the database "
+		return json.dumps("FAIL")
+	else :
+		try:
+			query_db('delete from NodeMap where ip_port=?',[db_str])
+			g.db.commit()	
+			query_db('delete from Nodes where ip_add=? and port=?',[str(ip_add), str(port_no)])
+			g.db.commit()	
 
+			node_entry = query_db('select ref_count from Nodes where ip_add=? and port=?', [str(remote_ip), str(remote_port)]) 
+
+			print 30 * '-'
+			print node_entry
+			print 30 * '-'
+
+			if node_entry == []:
+				print "Node not found "
+				return json.dumps("IGNORE")
+
+			else :
+				refcnt = node_entry[0]['ref_count']
+				print "Previous refcount + " + str(refcnt)
+				refcnt = int(refcnt) -1;
+				print "After updating  " + str(refcnt)
+				try :
+					g.db.execute('update Nodes set ref_count=? where port=? and ip_add=?',\
+						[str(refcnt), str(remote_port), str(remote_ip)] )
+					g.db.commit()	
+				except :
+					print "DB_UPDATE ERROR "
+					return json.dumps("UPDATE_ERR")	
+				
+		except:
+			print "DB_DELETE Error!"
+			return json.dumps("FAIL")
+	
+	return json.dumps("END");
 
 if __name__== "__main__":
 
