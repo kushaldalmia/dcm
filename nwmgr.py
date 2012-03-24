@@ -1,3 +1,5 @@
+import json
+import requests
 import sys
 import os
 import time
@@ -48,7 +50,7 @@ def handleTimeout(manager, node):
     manager.lock.release()
 
 class nwManager:
-    def __init__(self, localPort, neighborList, nodeId):
+    def __init__(self, localPort, neighborList):
         self.neighbors = {}
         self.conn = {}
         self.lock = threading.Lock()
@@ -62,7 +64,6 @@ class nwManager:
         self.available = []
         self.port = localPort
         self.localIP = getLocalIP()
-        self.nodeId = nodeId
         self.seqno = 1
         self.ttl = 32
 
@@ -150,8 +151,21 @@ def getLocalIP():
     s.connect(('google.com', 0))
     return s.getsockname()[0]
  
+def register_node(ip, port, server):
+    data = requests.get('http://' + server + "/register/" + str(ip) + "/" + str(port));
+    ip_list = json.loads(data.text)
+    count = ip_list[0]['count']
+    my_nodeid = ip_list[0]['my_nodeid']
+    ip_list = ip_list[1:]
+    return ip_list
+
 def main():
-    mgr = nwManager(int(sys.argv[1]), [], 1)
+    ip_list = register_node(getLocalIP(), sys.argv[1], "128.237.127.109:5000")
+    neighbor_list = []
+    for info in ip_list:
+        neighbor_list.append(info['ip_add'] + ":" + info['port'])
+    print "Neighbor Info:" + neighbor_list
+    mgr = nwManager(int(sys.argv[1]), neighbor_list)
     mgr.startManager()
     while True:
         continue
