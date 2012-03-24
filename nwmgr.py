@@ -41,6 +41,7 @@ def handleTimeout(manager, node):
         del manager.conn[node]
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
+        remove_node(self.localIP, self.port, node.split(":")[0], node.split(":")[1], "128.237.127.109:5000")
     else:
         print "No Heartbeat from neighbor " + node + "!"
         timer.cancel()
@@ -153,16 +154,19 @@ def getLocalIP():
     return s.getsockname()[0]
  
 def register_node(localIP, localPort, server):
-    data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort));
+    data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort))
     ip_list = json.loads(data.text)
     ip_list = ip_list[1:]
-    return ip_list
-
-def main():
-    ip_list = register_node(getLocalIP(), sys.argv[1], "128.237.127.109:5000")
     neighbor_list = []
     for info in ip_list:
         neighbor_list.append(str(info['ip_add']) + ":" + str(info['port']))
+    return neighbor_list
+
+def remove_node(localIP, localPort, nodeIP, nodePort, server):
+    data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort));
+
+def main():
+    neighbor_list = register_node(getLocalIP(), sys.argv[1], "128.237.127.109:5000")
     mgr = nwManager(int(sys.argv[1]), neighbor_list)
     mgr.startManager()
     while True:
