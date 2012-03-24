@@ -161,7 +161,7 @@ def main():
     ip_list = register_node(getLocalIP(), sys.argv[1], "128.237.127.109:5000")
     neighbor_list = []
     for info in ip_list:
-        neighbor_list.append(info['ip_add'] + ":" + info['port'])
+        neighbor_list.append(str(info['ip_add']) + ":" + str(info['port']))
     mgr = nwManager(int(sys.argv[1]), neighbor_list)
     mgr.startManager()
     while True:
