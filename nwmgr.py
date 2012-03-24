@@ -6,15 +6,14 @@ from socket import *
 import SocketServer
 import threading
 
-def connHandler(manager, client):
+def connHandler(manager, client, node):
     while True:
         try:
             data = client.recv(4096)
-            if manager.handleMessage(data, client) == False:
-                # Remove conn from manager neighbor list
-                return
+            manager.handleMessage(data, client, node)
         except:
-            pass
+            print "Killing thread for " + node
+            return
 
 def acceptConn(manager, server):
     manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
@@ -35,9 +34,12 @@ def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
     if count > 2:
-        print "Send RES_UNAVL for node " + node + "!"
+        print "Sending RES_UNAVL for node " + node + "!"
         timer.cancel()
         del manager.neighbors[node]
+        del manager.conn[node]
+        nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
+        manager.sendToNeighbors(nodefailMsg)
     else:
         print "No Heartbeat from neighbor " + node + "!"
         timer.cancel()
@@ -56,7 +58,7 @@ class nwManager:
             aliveTimer = threading.Timer(10,handleTimeout, args=(self, n,))
             aliveTimer.start()
             self.neighbors[n] = (aliveTimer,0)
-            t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
+            t = threading.Thread(target=connHandler, args=(self, self.conn[n],n, ))
             t.start()
         self.available = []
         self.port = localPort
@@ -87,9 +89,9 @@ class nwManager:
             except:
                 pass
 
-    def handleMessage(self, msgStr, client):
+    def handleMessage(self, msgStr, client, node):
         if len(msgStr) == 0:
-            return True
+            return
         msg = Message(msgStr)
         print "Received : " + msgStr
         curTime = time.time()
@@ -102,9 +104,6 @@ class nwManager:
             self.conn[msg.data] = client
             self.lock.release()
             print "Added new node to neighbor " + msg.data
-
-        elif self.neighbors[msg.data] == None:
-            return False
 
         elif msg.type == "HEARTBEAT":
             self.lock.acquire()
@@ -121,14 +120,21 @@ class nwManager:
 
         elif msg.type == "RES_UNAVL":
             # Handle Resource Unavailable Message
-            pass
-        return True
-            
+            self.sendExceptSource(msg.toString(), node)            
     
     def createNewMessage(self, msgType, data):
         msg = str(self.nodeId) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         self.seqno += 1
         return msg
+
+    def sendExceptSource(self, msg, node):
+        for key in self.conn:
+            if key == node:
+                continue
+            try:
+                self.conn[key].send(msg)
+            except:
+                pass
 
 
 # Helper Routines
