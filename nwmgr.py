@@ -151,11 +151,9 @@ def getLocalIP():
     s.connect(('google.com', 0))
     return s.getsockname()[0]
  
-def register_node(ip, port, server):
-    data = requests.get('http://' + server + "/register/" + str(ip) + "/" + str(port));
+def register_node(localIP, localPort, server):
+    data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort));
     ip_list = json.loads(data.text)
-    count = ip_list[0]['count']
-    my_nodeid = ip_list[0]['my_nodeid']
     ip_list = ip_list[1:]
     return ip_list
 
@@ -164,7 +162,6 @@ def main():
     neighbor_list = []
     for info in ip_list:
         neighbor_list.append(info['ip_add'] + ":" + info['port'])
-    print "Neighbor Info:" + neighbor_list
     mgr = nwManager(int(sys.argv[1]), neighbor_list)
     mgr.startManager()
     while True:
