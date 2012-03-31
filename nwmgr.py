@@ -41,7 +41,7 @@ def handleTimeout(manager, node):
         del manager.conn[node]
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
-        remove_node(self.localIP, self.port, node.split(":")[0], node.split(":")[1], "128.237.127.109:5000")
+        remove_node(manager.localIP, manager.port, node.split(":")[0], node.split(":")[1], "128.237.249.12:5000")
     else:
         print "No Heartbeat from neighbor " + node + "!"
         timer.cancel()
@@ -166,7 +166,7 @@ def remove_node(localIP, localPort, nodeIP, nodePort, server):
     data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort));
 
 def main():
-    neighbor_list = register_node(getLocalIP(), sys.argv[1], "128.237.127.109:5000")
+    neighbor_list = register_node(getLocalIP(), sys.argv[1], "128.237.249.12:5000")
     mgr = nwManager(int(sys.argv[1]), neighbor_list)
     mgr.startManager()
     while True:
