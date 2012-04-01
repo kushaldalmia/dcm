@@ -26,7 +26,8 @@ def acceptConn(manager, server):
             t = threading.Thread(target=connHandler, args=(manager, client,))
             t.start()
         except:
-            return
+            if manager.destroy == True:
+                return
 
 def sendHeartBeats(manager):
     hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
@@ -38,6 +39,11 @@ def sendHeartBeats(manager):
 def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
+    if manager.destroy == True:
+        timer.cancel()
+        manager.lock.release()
+        return
+    
     if count > 2:
         print "Sending RES_UNAVL for node " + node + "!"
         timer.cancel()
@@ -75,6 +81,7 @@ class nwManager:
         self.localIP = getLocalIP()
         self.seqno = 1
         self.ttl = config['ttl']
+        self.destroy = False
 
     def startManager(self):
         curTime = time.time()
@@ -86,6 +93,7 @@ class nwManager:
         self.server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.server.bind(('', self.port))
         self.server.listen(5)
+        self.server.settimeout(1.0)
 
         t = threading.Thread(target=acceptConn, args=(self, self.server,))
         t.start()
@@ -94,8 +102,7 @@ class nwManager:
         for key in self.conn:
             self.conn[key].close()
         self.server.close()
-        self.neighbors = {}
-        self.conn = {}
+        self.destroy = True
 
     def sendToNeighbors(self, msg):
         for key in self.conn:

@@ -20,13 +20,16 @@ def connect():
 	nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
 	serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
 	neighbor_list = register_node(getLocalIP(), port, serverAddr)
+	global mgr
 	mgr = nwManager(port, neighbor_list, nwMgrConfig)
 	mgr.startManager()
 	return render_template('home.html')
 
 @app.route('/disconnect', methods=['GET'])
 def disconnect():
-	msg.destroyManager()
+	global mgr
+	mgr.destroyManager()
+	mgr = None
 	return render_template('index.html')
 
 if __name__== "__main__":
