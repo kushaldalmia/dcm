@@ -1,0 +1,14 @@
+<html>
+<head>
+  <h1>Distributed Compute Market</h1>
+</head>
+<body>
+  <form action="{{ url_for('/') }}" method=get>
+    <dl>
+      <dt>Communication Port:
+      <dd><input type=text name=username>
+      <dd><input type=submit value=Connect>
+    </dl>
+  </form>
+</body>
+
