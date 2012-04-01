@@ -5,11 +5,13 @@
 <body>
   <h1>Distributed Compute Market</h1>
   <form action="{{ url_for('connect') }}" method=get>
-    <dl>
-      <dt>Communication Port:
-	<dd><input type=text name=port>
-      <dd><input type=submit value=Connect>
-    </dl>
+    <table>
+      <tr>
+      <td>Communication Port:</td>
+      <td><input type=text name=port></td>
+      </tr>
+      <tr><td><input type=submit value=Connect></td></tr>
+    </table>
   </form>
 </body>
 </html>
