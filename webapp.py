@@ -26,7 +26,7 @@ def connect():
 
 @app.route('/disconnect', methods=['GET'])
 def disconnect():
-	# Cleanly close mgr
+	msg.destroyManager()
 	return render_template('index.html')
 
 if __name__== "__main__":

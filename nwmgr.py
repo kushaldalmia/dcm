@@ -21,9 +21,12 @@ def acceptConn(manager, server):
     manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
     manager.hbtTimer.start()
     while True:
-        client, addr = server.accept()
-        t = threading.Thread(target=connHandler, args=(manager, client,))
-        t.start()
+        try:
+            client, addr = server.accept()
+            t = threading.Thread(target=connHandler, args=(manager, client,))
+            t.start()
+        except:
+            return
 
 def sendHeartBeats(manager):
     hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
@@ -79,13 +82,20 @@ class nwManager:
         self.sendToNeighbors(initMsg)
 
         # Initalize listening socket
-        server = socket(AF_INET, SOCK_STREAM)
-        server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        server.bind(('', self.port))
-        server.listen(5)
+        self.server = socket(AF_INET, SOCK_STREAM)
+        self.server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        self.server.bind(('', self.port))
+        self.server.listen(5)
 
-        t = threading.Thread(target=acceptConn, args=(self, server,))
+        t = threading.Thread(target=acceptConn, args=(self, self.server,))
         t.start()
+
+    def destroyManager(self):
+        for key in self.conn:
+            self.conn[key].close()
+        self.server.close()
+        self.neighbors = {}
+        self.conn = {}
 
     def sendToNeighbors(self, msg):
         for key in self.conn:
@@ -181,18 +191,3 @@ def ConfigSectionMap(config, section):
             dict1[option] = None
 
     return dict1
-
-def main():
-    # Read the config file
-    config = ConfigParser.ConfigParser()
-    config.read('config.cfg')
-    nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
-    serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
-    neighbor_list = register_node(getLocalIP(), sys.argv[1], serverAddr)
-    mgr = nwManager(int(sys.argv[1]), neighbor_list, nwMgrConfig)
-    mgr.startManager()
-    while True:
-        continue
-
-if __name__ == "__main__":
-    main()
