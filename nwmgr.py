@@ -7,17 +7,18 @@ from message import *
 from socket import *
 import SocketServer
 import threading
+import ConfigParser
 
 def connHandler(manager, client):
     while True:
         try:
-            data = client.recv(4096)
+            data = client.recv(manager.config['buflen'])
             manager.handleMessage(data, client)
         except:
             return
-            
+
 def acceptConn(manager, server):
-    manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
+    manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
     manager.hbtTimer.start()
     while True:
         client, addr = server.accept()
@@ -28,7 +29,7 @@ def sendHeartBeats(manager):
     hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
     manager.sendToNeighbors(hbtMsg)
     manager.hbtTimer.cancel()
-    manager.hbtTimer = threading.Timer(10, sendHeartBeats, args=(manager,))
+    manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
     manager.hbtTimer.start()
 
 def handleTimeout(manager, node):
@@ -41,24 +42,26 @@ def handleTimeout(manager, node):
         del manager.conn[node]
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
-        remove_node(manager.localIP, manager.port, node.split(":")[0], node.split(":")[1], "128.237.249.12:5000")
+        remove_node(manager.localIP, manager.port, node.split(":")[0],
+                    node.split(":")[1], config['serverip'] + ':' + config['serverport'])
     else:
         print "No Heartbeat from neighbor " + node + "!"
         timer.cancel()
-        timer = threading.Timer(10,handleTimeout, args=(manager, node,))
+        timer = threading.Timer(int(manager.config['heartbeattimeout']), handleTimeout, args=(manager, node,))
         timer.start()
         manager.neighbors[node] = (timer, count + 1)
     manager.lock.release()
 
 class nwManager:
-    def __init__(self, localPort, neighborList):
+    def __init__(self, localPort, neighborList, config):
         self.neighbors = {}
         self.conn = {}
         self.lock = threading.Lock()
+        self.config = config
         for n in neighborList:
             print "Neighbor is: " + n
             self.conn[n] = createConn(n)
-            aliveTimer = threading.Timer(10,handleTimeout, args=(self, n,))
+            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, n,))
             aliveTimer.start()
             self.neighbors[n] = (aliveTimer,0)
             t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
@@ -67,13 +70,13 @@ class nwManager:
         self.port = localPort
         self.localIP = getLocalIP()
         self.seqno = 1
-        self.ttl = 32
+        self.ttl = config['ttl']
 
     def startManager(self):
         curTime = time.time()
         initMsg = self.createNewMessage("NEIGHBOR_INIT", (self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(initMsg)
-               
+
         # Initalize listening socket
         server = socket(AF_INET, SOCK_STREAM)
         server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -83,7 +86,6 @@ class nwManager:
         t = threading.Thread(target=acceptConn, args=(self, server,))
         t.start()
 
-        
     def sendToNeighbors(self, msg):
         for key in self.conn:
             try:
@@ -100,7 +102,7 @@ class nwManager:
 
         if msg.type == "NEIGHBOR_INIT":
             self.lock.acquire()
-            aliveTimer = threading.Timer(10,handleTimeout, args=(self, msg.data,))
+            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.data,))
             aliveTimer.start()
             self.neighbors[msg.data] = (aliveTimer, 0)
             self.conn[msg.data] = client
@@ -111,7 +113,7 @@ class nwManager:
             self.lock.acquire()
             aliveTimer, count = self.neighbors[msg.data]
             aliveTimer.cancel()
-            aliveTimer = threading.Timer(10,handleTimeout, args=(self, msg.data,))
+            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.data,))
             aliveTimer.start()
             self.neighbors[msg.data] = (aliveTimer, 0)
             self.lock.release()
@@ -122,8 +124,8 @@ class nwManager:
 
         elif msg.type == "RES_UNAVL":
             # Handle Resource Unavailable Message
-            self.sendExceptSource(msg.toString(), msg.sender)            
-    
+            self.sendExceptSource(msg.toString(), msg.sender)
+
     def createNewMessage(self, msgType, data):
         msg = str(self.localIP + ":" + str(self.port)) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         self.seqno += 1
@@ -152,7 +154,7 @@ def getLocalIP():
     s = socket(AF_INET, SOCK_DGRAM)
     s.connect(('google.com', 0))
     return s.getsockname()[0]
- 
+
 def register_node(localIP, localPort, server):
     data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort))
     ip_list = json.loads(data.text)
@@ -165,9 +167,28 @@ def register_node(localIP, localPort, server):
 def remove_node(localIP, localPort, nodeIP, nodePort, server):
     data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort));
 
+def ConfigSectionMap(config, section):
+    dict1 = {}
+    options = config.options(section)
+    for option in options:
+        try:
+            dict1[option] = config.get(section, option)
+            if dict1[option] == -1:
+                DebugPrint("skip: %s" % option)
+        except:
+            print("exception on %s!" % option)
+            dict1[option] = None
+
+    return dict1
+
 def main():
-    neighbor_list = register_node(getLocalIP(), sys.argv[1], "128.237.249.12:5000")
-    mgr = nwManager(int(sys.argv[1]), neighbor_list)
+    # Read the config file
+    config = ConfigParser.ConfigParser()
+    config.read('config.cfg')
+    nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
+    serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
+    neighbor_list = register_node(getLocalIP(), sys.argv[1], serverAddr)
+    mgr = nwManager(int(sys.argv[1]), neighbor_list, nwMgrConfig)
     mgr.startManager()
     while True:
         continue
