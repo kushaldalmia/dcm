@@ -12,7 +12,7 @@ import ConfigParser
 def connHandler(manager, client):
     while True:
         try:
-            data = client.recv(manager.config['buflen'])
+            data = client.recv(int(manager.config['buflen']))
             manager.handleMessage(data, client)
         except:
             return
@@ -43,7 +43,8 @@ def handleTimeout(manager, node):
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
         remove_node(manager.localIP, manager.port, node.split(":")[0],
-                    node.split(":")[1], config['serverip'] + ':' + config['serverport'])
+                    node.split(":")[1], manager.config['serverip'] + ':' +
+                    manager.config['serverport'])
     else:
         print "No Heartbeat from neighbor " + node + "!"
         timer.cancel()
