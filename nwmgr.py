@@ -44,7 +44,7 @@ def handleTimeout(manager, node):
         manager.lock.release()
         return
     
-    if count > 2:
+    if count > int(manager.config['retrycount']):
         print "Sending RES_UNAVL for node " + node + "!"
         timer.cancel()
         del manager.neighbors[node]
