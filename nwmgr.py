@@ -41,6 +41,7 @@ def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
     if manager.destroy == True: 
+        manager.lock.acquire()
         return
     
     if count > int(manager.config['retrycount']):
@@ -55,7 +56,7 @@ def handleTimeout(manager, node):
                     manager.config['serverport'])
     else:
         print "No Heartbeat from neighbor " + node + "!"
-        timer = threading.Timer(int(manager.config['heartbeattimeout']), handleTimeout, args=(manager, node,))
+        timer = threading.Timer(int(manager.config['alivetimeout']), handleTimeout, args=(manager, node,))
         timer.start()
         manager.neighbors[node] = (timer, count + 1)
     manager.lock.release()
@@ -139,10 +140,9 @@ class nwManager:
 
         elif msg.type == "RES_UNAVL":
             msg.ttl -= 1
-            if msg.ttl == 0:
-                return
-            # Handle Resource Unavailable Message
-            self.sendExceptSource(msg.toString(), msg.sender)
+            if msg.ttl != 0:
+                # Handle Resource Unavailable Message
+                self.sendExceptSource(msg.toString(), msg.sender)
 
         self.lock.release()
 
