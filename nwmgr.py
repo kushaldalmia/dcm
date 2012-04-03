@@ -105,11 +105,13 @@ class nwManager:
         self.destroy = True
 
     def sendToNeighbors(self, msg):
+        self.lock.acquire()
         for key in self.conn:
             try:
                 self.conn[key].send(msg)
             except:
                 pass
+        self.lock.release()
 
     def handleMessage(self, msgStr, client):
         if len(msgStr) == 0:
@@ -141,6 +143,9 @@ class nwManager:
             pass
 
         elif msg.type == "RES_UNAVL":
+            msg.ttl -= 1
+            if msg.ttl == 0:
+                return
             # Handle Resource Unavailable Message
             self.sendExceptSource(msg.toString(), msg.sender)
 
@@ -150,6 +155,7 @@ class nwManager:
         return msg
 
     def sendExceptSource(self, msg, node):
+        self.lock.acquire()
         for key in self.conn:
             if key == node:
                 continue
@@ -157,6 +163,7 @@ class nwManager:
                 self.conn[key].send(msg)
             except:
                 pass
+        self.lock.release()
 
 
 # Helper Routines
