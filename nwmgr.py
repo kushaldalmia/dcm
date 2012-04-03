@@ -31,27 +31,23 @@ def acceptConn(manager, server):
 
 def sendHeartBeats(manager):
     hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
+    manager.lock.acquire()
     manager.sendToNeighbors(hbtMsg)
-    manager.hbtTimer.cancel()
+    manager.lock.release()
     manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
     manager.hbtTimer.start()
 
 def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
-    manager.lock.release()
-    if manager.destroy == True:
-        timer.cancel()
+    if manager.destroy == True: 
         return
     
     if count > int(manager.config['retrycount']):
         print "Sending RES_UNAVL for node " + node + "!"
-        timer.cancel()
-        manager.lock.acquire()
         manager.conn[node].close()
         del manager.neighbors[node]
         del manager.conn[node]
-        manager.lock.release()
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
         remove_node(manager.localIP, manager.port, node.split(":")[0],
@@ -59,12 +55,10 @@ def handleTimeout(manager, node):
                     manager.config['serverport'])
     else:
         print "No Heartbeat from neighbor " + node + "!"
-        timer.cancel()
         timer = threading.Timer(int(manager.config['heartbeattimeout']), handleTimeout, args=(manager, node,))
         timer.start()
-        manager.lock.acquire()
         manager.neighbors[node] = (timer, count + 1)
-        manager.lock.release()
+    manager.lock.release()
 
 class nwManager:
     def __init__(self, localPort, neighborList, config):
@@ -111,13 +105,11 @@ class nwManager:
         self.destroy = True
 
     def sendToNeighbors(self, msg):
-        self.lock.acquire()
         for key in self.conn:
             try:
                 self.conn[key].send(msg)
             except:
                 pass
-        self.lock.release()
 
     def handleMessage(self, msgStr, client):
         if len(msgStr) == 0:
@@ -135,13 +127,11 @@ class nwManager:
             print "Added new node to neighbor " + msg.data
 
         elif msg.type == "HEARTBEAT":
-            self.lock.acquire()
             aliveTimer, count = self.neighbors[msg.data]
             aliveTimer.cancel()
             aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.data,))
             aliveTimer.start()
             self.neighbors[msg.data] = (aliveTimer, 0)
-            self.lock.release()
 
         elif msg.type == "RES_AVL":
             # Handle Resource Available Message
