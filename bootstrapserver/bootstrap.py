@@ -228,14 +228,46 @@ def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 	id_list = query_db('select node_id from NodeMap where ip_port=?',[db_str])
 	
 	if id_list == []:
+		node_entry = query_db('select ref_count from Nodes where ip_add=? and port=?', [str(remote_ip), str(remote_port)]) 
+
+		print 30 * '-'
+		print node_entry
+		print 30 * '-'
+
+		if node_entry == []:
+			print "Node not found "
+			return json.dumps("IGNORE")
+
+		else :
+			refcnt = node_entry[0]['ref_count']
+			print "Previous refcount + " + str(refcnt)
+			refcnt = int(refcnt) -1;
+			print "After updating  " + str(refcnt)
+			try :
+				g.db.execute('update Nodes set ref_count=? where port=? and ip_add=?',\
+					[str(refcnt), str(remote_port), str(remote_ip)] )
+				g.db.commit()	
+			except :
+				print "DB_UPDATE ERROR "
+				return json.dumps("UPDATE_ERR")	
+
+
 		print "Node is not in the database "
-		return json.dumps("FAIL")
-	else :
+	else:
+		
 		try:
 			query_db('delete from NodeMap where ip_port=?',[db_str])
-			g.db.commit()	
+			g.db.commit()
+		except:
+
+			print "DBDELETE_ERR: Entry not in NodeMap, will try to update refcount"
+		try:
 			query_db('delete from Nodes where ip_add=? and port=?',[str(ip_add), str(port_no)])
 			g.db.commit()	
+		except:
+			print " DBDELETE_ERR: Entry already deleted, Updating My refcnt"
+		try: 
+			print " DBDIAG: Updating refcount for " +  str(remote_ip) 
 
 			node_entry = query_db('select ref_count from Nodes where ip_add=? and port=?', [str(remote_ip), str(remote_port)]) 
 
