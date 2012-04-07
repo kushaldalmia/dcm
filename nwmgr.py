@@ -75,12 +75,13 @@ class nwManager:
             self.neighbors[n] = (aliveTimer,0)
             t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
             t.start()
-        self.available = []
+        self.freeNodes = []
         self.port = localPort
         self.localIP = getLocalIP()
         self.seqno = 1
         self.ttl = config['ttl']
         self.destroy = False
+        self.available = False
 
     def startManager(self):
         curTime = time.time()
@@ -112,6 +113,20 @@ class nwManager:
             except:
                 pass
 
+    def makeAvailable(self):
+        self.available = True
+        avlMsg = self.createNewMessage("RES_AVL", (self.localIP + ":" + str(self.port)))
+        self.lock.acquire()
+        self.sendToNeighbors(avlMsg)
+        self.lock.release()
+    
+    def makeUnavailable(self):
+        self.available = False
+        unavlMsg = self.createNewMessage("RES_UNAVL", (self.localIP + ":" + str(self.port)))
+        self.lock.acquire()
+        self.sendToNeighbors(unavlMsg)
+        self.lock.release()
+
     def handleMessage(self, msgStr, client):
         if len(msgStr) == 0:
             return
@@ -135,10 +150,15 @@ class nwManager:
             self.neighbors[msg.data] = (aliveTimer, 0)
 
         elif msg.type == "RES_AVL":
-            # Handle Resource Available Message
-            pass
+            self.freeNodes.append(msg.data)
+            msg.ttl -= 1
+            if msg.ttl != 0:
+                # Handle Resource Unavailable Message
+                self.sendExceptSource(msg.toString(), msg.sender)
 
         elif msg.type == "RES_UNAVL":
+            if msg.data in self.freeNodes:
+                self.freeNodes.remove(msg.data)
             msg.ttl -= 1
             if msg.ttl != 0:
                 # Handle Resource Unavailable Message

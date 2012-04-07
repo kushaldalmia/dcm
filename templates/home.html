@@ -8,5 +8,18 @@
       <dd><input type=submit value=Disconnect>
     </dl>
   </form>
+  {% if status == 'available' %}
+  <form action="{{ url_for('unavailable') }}" method=get>
+    <dl>
+      <dd><input type=submit value="Unavailable">
+    </dl>
+  </form>
+  {% else %}
+  <form action="{{ url_for('available') }}" method=get>
+    <dl>
+      <dd><input type=submit value="Available">
+    </dl>
+  </form>
+  {% endif %}
 </body>
 

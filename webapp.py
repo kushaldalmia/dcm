@@ -23,7 +23,7 @@ def connect():
 	global mgr
 	mgr = nwManager(port, neighbor_list, nwMgrConfig)
 	mgr.startManager()
-	return render_template('home.html')
+	return render_template('home.html', status="unavailable")
 
 @app.route('/disconnect', methods=['GET'])
 def disconnect():
@@ -31,6 +31,18 @@ def disconnect():
 	mgr.destroyManager()
 	mgr = None
 	return render_template('index.html')
+
+@app.route('/available', methods=['GET'])
+def available():
+	global mgr
+	mgr.makeAvailable()
+	return render_template('home.html', status="available")
+
+@app.route('/unavailable', methods=['GET'])
+def unavailable():
+	global mgr
+	mgr.makeUnavailable()
+	return render_template('home.html', status="unavailable")
 
 if __name__== "__main__":
 	app.debug = True
