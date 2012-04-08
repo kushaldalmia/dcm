@@ -17,6 +17,7 @@ def connHandler(manager, client):
                 return
         except Exception, e:
             print "Exception:%s" % e
+            manager.lock.release()
             return
 
 def acceptConn(manager, server):
