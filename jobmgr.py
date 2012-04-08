@@ -40,8 +40,8 @@ class jobManager:
             return False
         print "Job Manager reserved nodes for Job!"
         self.curJob = job
-        #self.status = 'JOBEXEC'
-        #self.splitJob(self.curJob)
+        self.status = 'JOBEXEC'
+        self.splitJob(self.curJob)
         #for i in range(0, job.numNodes):
         #   self.nwmgr.scheduleJob(job.srcFile, "chunk" + str(i))
         #return True
