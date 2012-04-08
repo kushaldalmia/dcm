@@ -19,6 +19,7 @@ class jobManager:
         self.status = 'CONNECTED'
         self.curJob = None
         self.reservedBy = None
+        self.reservedNodes = {}
     
     def makeAvailable(self):
         self.status = 'AVAILABLE'
@@ -43,7 +44,7 @@ class jobManager:
         self.status = 'JOBSCHED'
         t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
         t.start()
-        return True    
+        return True
 
 def scheduleJob(jobmgr, job):
     splitJob(job)
@@ -65,5 +66,3 @@ def splitJob(job):
     lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
     cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
     os.system(cmd)
-    
-    

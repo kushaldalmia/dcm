@@ -88,7 +88,6 @@ class nwManager:
             t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
             t.start()
         self.freeNodes = []
-        self.reservedNodes = {}
         self.port = localPort
         self.localIP = getLocalIP()
         self.localNodeId = self.localIP + ":" + str(self.port)
@@ -251,17 +250,17 @@ class nwManager:
                 sock.close()
                 msg = Message(data)
                 if msg.type == "ACK":
-                    self.reservedNodes[node] = -1
-                    if len(self.reservedNodes) == num:
+                    self.jobmgr.reservedNodes[node] = -1
+                    if len(self.jobmgr.reservedNodes) == num:
                         break
             except:
                 pass
 
-        if len(self.reservedNodes) == num:
+        if len(self.jobmgr.reservedNodes) == num:
             return True
         else:
             relMsg = self.createNewMessage("RELEASE_REQ", self.localNodeId)
-            for key in self.reservedNodes:
+            for key in self.jobmgr.reservedNodes:
                 print "Sending RELEASE_REQ to node: " + key
                 try:
                     sock = createConn(key)
@@ -271,7 +270,7 @@ class nwManager:
                 except:
                     pass
 
-            self.reservedNodes = {}
+            self.jobmgr.reservedNodes = {}
             return False
 
 
