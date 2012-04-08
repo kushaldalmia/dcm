@@ -17,7 +17,6 @@ def connHandler(manager, client):
                 return
         except Exception, e:
             print "Exception:%s" % e
-            manager.lock.release()
             return
 
 def acceptConn(manager, server):
@@ -46,10 +45,10 @@ def sendHeartBeats(manager):
 def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
-    if manager.destroy == True: 
+    if manager.destroy == True:
         manager.lock.acquire()
         return
-    
+
     if count > int(manager.config['retrycount']):
         print "Sending RES_UNAVL for node " + node + "!"
         manager.conn[node].close()
@@ -68,11 +67,17 @@ def handleTimeout(manager, node):
     manager.lock.release()
 
 class nwManager:
-    def __init__(self, localPort, neighborList, config, jobmgr):
+    def __init__(self, localPort, neighborList, jobmgr):
         self.neighbors = {}
         self.conn = {}
         self.lock = threading.Lock()
-        self.config = config
+
+        # Read the config file
+        config = ConfigParser.ConfigParser()
+        config.read('config.cfg')
+        nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
+        self.config = nwMgrConfig
+
         for n in neighborList:
             print "Neighbor is: " + n
             self.conn[n] = createConn(n)
@@ -85,14 +90,15 @@ class nwManager:
         self.reservedNodes = {}
         self.port = localPort
         self.localIP = getLocalIP()
+        self.srcStr = self.localIP + ":" + str(self.port)
         self.seqno = 1
-        self.ttl = config['ttl']
+        self.ttl = self.config['ttl']
         self.destroy = False
         self.jobmgr = jobmgr
 
     def startManager(self):
         curTime = time.time()
-        initMsg = self.createNewMessage("NEIGHBOR_INIT", (self.localIP + ":" + str(self.port)))
+        initMsg = self.createNewMessage("NEIGHBOR_INIT", self.srcStr)
         self.sendToNeighbors(initMsg)
 
         # Initalize listening socket
@@ -121,14 +127,14 @@ class nwManager:
                 pass
 
     def makeAvailable(self):
-        avlMsg = self.createNewMessage("RES_AVL", (self.localIP + ":" + str(self.port)))
+        avlMsg = self.createNewMessage("RES_AVL", self.srcStr)
         self.lock.acquire()
         self.freeNodes.append((self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(avlMsg)
         self.lock.release()
-    
+
     def makeUnavailable(self):
-        unavlMsg = self.createNewMessage("RES_UNAVL", (self.localIP + ":" + str(self.port)))
+        unavlMsg = self.createNewMessage("RES_UNAVL", self.srcStr)
         self.lock.acquire()
         self.freeNodes.remove((self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(unavlMsg)
@@ -180,14 +186,14 @@ class nwManager:
             if msg.ttl != 0:
                 # Handle Resource Unavailable Message
                 self.sendExceptSource(msg.toString(), msg.src)
-        
+
         elif msg.type == "RESERVE_REQ":
             reserved = False
             if self.jobmgr.status == 'AVAILABLE':
-                ackMsg = self.createNewMessage("ACK", (self.localIP + ":" + str(self.port)))
+                ackMsg = self.createNewMessage("ACK", self.srcStr)
                 reserved = True
             else:
-                ackMsg = self.createNewMessage("NACK", (self.localIP + ":" + str(self.port)))
+                ackMsg = self.createNewMessage("NACK", self.srcStr)
             try:
                 client.send(ackMsg)
                 if reserved == True:
@@ -210,7 +216,7 @@ class nwManager:
         return True
 
     def createNewMessage(self, msgType, data):
-        msg = str(self.localIP + ":" + str(self.port)) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        msg = self.srcStr + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         self.seqno += 1
         return msg
 
@@ -233,7 +239,7 @@ class nwManager:
         freeList = self.freeNodes[:]
         self.lock.release()
 
-        reqMsg = self.createNewMessage("RESERVE_REQ", (self.localIP + ":" + str(self.port)))
+        reqMsg = self.createNewMessage("RESERVE_REQ", self.srcStr)
         for node in freeList:
             try:
                 print "Sending RESERVE_REQ to node: " + node
@@ -247,11 +253,11 @@ class nwManager:
                     self.reservedNodes[node] = True
             except:
                 pass
-           
+
         if len(self.reservedNodes) == num:
             return True
         else:
-            relMsg = self.createNewMessage("RELEASE_REQ", (self.localIP + ":" + str(self.port)))
+            relMsg = self.createNewMessage("RELEASE_REQ", self.srcStr)
             for key in self.reservedNodes:
                 print "Sending RELEASE_REQ to node: " + key
                 try:
@@ -265,7 +271,7 @@ class nwManager:
             self.reservedNodes = {}
             return False
 
- 
+
 # Helper Routines
 def createConn(n):
     sock = socket(AF_INET, SOCK_STREAM)

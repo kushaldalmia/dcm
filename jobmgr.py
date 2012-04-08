@@ -13,8 +13,8 @@ from nwmgr import *
 
 class jobManager:
 
-    def __init__(self, localPort, neighborList, config):
-        self.nwmgr = nwManager(localPort, neighborList, config, self)
+    def __init__(self, localPort, neighborList):
+        self.nwmgr = nwManager(localPort, neighborList, self)
         self.nwmgr.startManager()
         self.status = 'CONNECTED'
         self.curJob = None

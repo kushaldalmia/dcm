@@ -22,7 +22,7 @@ def connect():
 	serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
 	neighbor_list = register_node(getLocalIP(), port, serverAddr)
 	global mgr
-	mgr = jobManager(port, neighbor_list, nwMgrConfig)
+	mgr = jobManager(port, neighbor_list)
 	return render_template('home.html', status="unavailable")
 
 @app.route('/disconnect', methods=['GET'])
