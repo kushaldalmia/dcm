@@ -3,7 +3,7 @@ from flask import Flask,flash, request,render_template, Response,session,g
 import json
 import StringIO, json, hashlib, random, os , base64, time, math, sqlite3, sys
 import urllib, urllib2, datetime
-from nwmgr import *
+from jobmgr import *
 
 app = Flask(__name__)
 mgr = None
@@ -21,8 +21,7 @@ def connect():
 	serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
 	neighbor_list = register_node(getLocalIP(), port, serverAddr)
 	global mgr
-	mgr = nwManager(port, neighbor_list, nwMgrConfig)
-	mgr.startManager()
+	mgr = jobManager(port, neighbor_list, nwMgrConfig)
 	return render_template('home.html', status="unavailable")
 
 @app.route('/disconnect', methods=['GET'])

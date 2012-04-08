@@ -62,7 +62,7 @@ def handleTimeout(manager, node):
     manager.lock.release()
 
 class nwManager:
-    def __init__(self, localPort, neighborList, config):
+    def __init__(self, localPort, neighborList, config, jobmgr):
         self.neighbors = {}
         self.conn = {}
         self.lock = threading.Lock()
@@ -82,6 +82,7 @@ class nwManager:
         self.ttl = config['ttl']
         self.destroy = False
         self.available = False
+        self.jobmgr = jobmgr
 
     def startManager(self):
         curTime = time.time()
