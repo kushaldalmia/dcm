@@ -40,17 +40,30 @@ class jobManager:
             return False
         print "Job Manager reserved nodes for Job!"
         self.curJob = job
-        self.status = 'JOBEXEC'
-        self.splitJob(self.curJob)
-        #for i in range(0, job.numNodes):
-        #   self.nwmgr.scheduleJob(job.srcFile, "chunk" + str(i))
-        #return True
-        
-    def splitJob(self, job):
-        numLines = sum(1 for line in open(job.ipFile))
-        lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
-        cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
-        os.system(cmd)
-        
+        self.status = 'JOBSCHED'
+        t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
+        t.start()
+        return True    
 
+def scheduleJob(jobmgr, job):
+    splitJob(job)
+    schedThreads = []
+    threadStatus = []
+    for i in range(0, job.numNodes):
+        schedThreads[i] = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job.srcFile, "chunk" + str(i), i, threadStatus,))
+        schedThreads[i].start()
+    for t in schedThreads:
+        t.join()
+    for i in range(0, job.numNodes):
+        if threadStatus[i] == -1:
+            # reschedule chunk i
+            pass
+    return
+
+def splitJob(job):
+    numLines = sum(1 for line in open(job.ipFile))
+    lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
+    cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
+    os.system(cmd)
+    
     

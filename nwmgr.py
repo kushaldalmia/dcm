@@ -91,7 +91,7 @@ class nwManager:
         self.reservedNodes = {}
         self.port = localPort
         self.localIP = getLocalIP()
-        self.srcStr = self.localIP + ":" + str(self.port)
+        self.localNodeId = self.localIP + ":" + str(self.port)
         self.seqno = 1
         self.ttl = self.config['ttl']
         self.destroy = False
@@ -99,7 +99,7 @@ class nwManager:
 
     def startManager(self):
         curTime = time.time()
-        initMsg = self.createNewMessage("NEIGHBOR_INIT", self.srcStr)
+        initMsg = self.createNewMessage("NEIGHBOR_INIT", self.localNodeId)
         self.sendToNeighbors(initMsg)
 
         # Initalize listening socket
@@ -128,14 +128,14 @@ class nwManager:
                 pass
 
     def makeAvailable(self):
-        avlMsg = self.createNewMessage("RES_AVL", self.srcStr)
+        avlMsg = self.createNewMessage("RES_AVL", self.localNodeId)
         self.lock.acquire()
         self.freeNodes.append((self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(avlMsg)
         self.lock.release()
 
     def makeUnavailable(self):
-        unavlMsg = self.createNewMessage("RES_UNAVL", self.srcStr)
+        unavlMsg = self.createNewMessage("RES_UNAVL", self.localNodeId)
         self.lock.acquire()
         self.freeNodes.remove((self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(unavlMsg)
@@ -191,10 +191,10 @@ class nwManager:
         elif msg.type == "RESERVE_REQ":
             reserved = False
             if self.jobmgr.status == 'AVAILABLE':
-                ackMsg = self.createNewMessage("ACK", self.srcStr)
+                ackMsg = self.createNewMessage("ACK", self.localNodeId)
                 reserved = True
             else:
-                ackMsg = self.createNewMessage("NACK", self.srcStr)
+                ackMsg = self.createNewMessage("NACK", self.localNodeId)
             try:
                 client.send(ackMsg)
                 if reserved == True:
@@ -217,7 +217,7 @@ class nwManager:
         return True
 
     def createNewMessage(self, msgType, data):
-        msg = self.srcStr + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        msg = self.localNodeId + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         self.seqno += 1
         return msg
 
@@ -240,7 +240,7 @@ class nwManager:
         freeList = self.freeNodes[:]
         self.lock.release()
 
-        reqMsg = self.createNewMessage("RESERVE_REQ", self.srcStr)
+        reqMsg = self.createNewMessage("RESERVE_REQ", self.localNodeId)
         for node in freeList:
             try:
                 print "Sending RESERVE_REQ to node: " + node
@@ -251,14 +251,16 @@ class nwManager:
                 sock.close()
                 msg = Message(data)
                 if msg.type == "ACK":
-                    self.reservedNodes[node] = True
+                    self.reservedNodes[node] = -1
+                    if len(self.reservedNodes) == num:
+                        break
             except:
                 pass
 
         if len(self.reservedNodes) == num:
             return True
         else:
-            relMsg = self.createNewMessage("RELEASE_REQ", self.srcStr)
+            relMsg = self.createNewMessage("RELEASE_REQ", self.localNodeId)
             for key in self.reservedNodes:
                 print "Sending RELEASE_REQ to node: " + key
                 try:
