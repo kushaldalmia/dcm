@@ -34,16 +34,16 @@ class jobManager:
     def addJob(self, job):
         if self.curJob != None or self.status == 'AVAILABLE':
             return False
-        if len(self.nwmgr.freeNodes) < job.numNodes:
-            return False
         if self.nwmgr.reserveNodes(job.numNodes) == False:
+            print "Unable to reserve nodes for Job!"
             return False
+        print "Job Manager reserved nodes for Job!"
         self.curJob = job
-        self.status = 'JOBEXEC'
-        self.splitJob(self.curJob)
-        for i in range(0, job.numNodes):
-            self.nwmgr.scheduleJob(job.srcFile, "chunk" + str(i))
-        return True
+        #self.status = 'JOBEXEC'
+        #self.splitJob(self.curJob)
+        #for i in range(0, job.numNodes):
+        #   self.nwmgr.scheduleJob(job.srcFile, "chunk" + str(i))
+        #return True
         
     def splitJob(self, job):
         numLines = sum(1 for line in open(job.ipFile))

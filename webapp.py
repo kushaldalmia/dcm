@@ -4,6 +4,7 @@ import json
 import StringIO, json, hashlib, random, os , base64, time, math, sqlite3, sys
 import urllib, urllib2, datetime
 from jobmgr import *
+from job import *
 
 app = Flask(__name__)
 mgr = None
@@ -41,6 +42,13 @@ def available():
 def unavailable():
 	global mgr
 	mgr.makeUnavailable()
+	return render_template('home.html', status="unavailable")
+
+@app.route('/addjob', methods=['GET'])
+def addjob():
+	global mgr
+	job = Job("", "", "", 2)
+	mgr.addJob(job)
 	return render_template('home.html', status="unavailable")
 
 if __name__== "__main__":

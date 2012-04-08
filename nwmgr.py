@@ -13,7 +13,8 @@ def connHandler(manager, client):
     while True:
         try:
             data = client.recv(int(manager.config['buflen']))
-            manager.handleMessage(data, client)
+            if manager.handleMessage(data, client) == False:
+                return
         except:
             return
 
@@ -76,12 +77,12 @@ class nwManager:
             t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
             t.start()
         self.freeNodes = []
+        self.reservedNodes = {}
         self.port = localPort
         self.localIP = getLocalIP()
         self.seqno = 1
         self.ttl = config['ttl']
         self.destroy = False
-        self.available = False
         self.jobmgr = jobmgr
 
     def startManager(self):
@@ -115,14 +116,12 @@ class nwManager:
                 pass
 
     def makeAvailable(self):
-        self.available = True
         avlMsg = self.createNewMessage("RES_AVL", (self.localIP + ":" + str(self.port)))
         self.lock.acquire()
         self.sendToNeighbors(avlMsg)
         self.lock.release()
     
     def makeUnavailable(self):
-        self.available = False
         unavlMsg = self.createNewMessage("RES_UNAVL", (self.localIP + ":" + str(self.port)))
         self.lock.acquire()
         self.sendToNeighbors(unavlMsg)
@@ -130,7 +129,7 @@ class nwManager:
 
     def handleMessage(self, msgStr, client):
         if len(msgStr) == 0:
-            return
+            return False
         self.lock.acquire()
         msg = Message(msgStr)
         print "Received : " + msgStr
@@ -151,11 +150,12 @@ class nwManager:
             self.neighbors[msg.data] = (aliveTimer, 0)
 
         elif msg.type == "RES_AVL":
-            self.freeNodes.append(msg.data)
-            msg.ttl -= 1
-            if msg.ttl != 0:
-                # Handle Resource Unavailable Message
-                self.sendExceptSource(msg.toString(), msg.sender)
+            if msg.data not in self.freeNodes:
+                self.freeNodes.append(msg.data)
+                msg.ttl -= 1
+                if msg.ttl != 0:
+                    # Handle Resource Unavailable Message
+                    self.sendExceptSource(msg.toString(), msg.sender)
 
         elif msg.type == "RES_UNAVL":
             if msg.data in self.freeNodes:
@@ -164,22 +164,90 @@ class nwManager:
             if msg.ttl != 0:
                 # Handle Resource Unavailable Message
                 self.sendExceptSource(msg.toString(), msg.sender)
+        
+        elif msg.type == "RESERVE_REQ":
+            reserved = False
+            if self.jobmgr.status == 'AVAILABLE':
+                ackMsg = self.createNewMessage("ACK", (self.localIP + ":" + str(self.port)))
+                reserved = True
+            else:
+                ackMsg = self.createNewMessage("NACK", (self.localIP + ":" + str(self.port)))
+            try:
+                client.send(ackMsg)
+                if reserved == True:
+                    self.jobmgr.status = 'RESERVED'
+            except:
+                pass
+            client.close()
+            self.lock.release()
+            return False
+
+        elif msg.type == "RELEASE_REQ":
+            if self.jobmgr.status == 'RESERVED':
+                self.jobmgr.status = 'AVAILABLE'
+            client.close()
+            self.lock.release()
+            return False
 
         self.lock.release()
+        return True
 
     def createNewMessage(self, msgType, data):
         msg = str(self.localIP + ":" + str(self.port)) + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         self.seqno += 1
         return msg
 
-    def sendExceptSource(self, msg, node):
+    def sendExceptSource(self, msg, src):
         for key in self.conn:
-            if key == node:
+            if key == src:
                 continue
             try:
                 self.conn[key].send(msg)
             except:
                 pass
+
+    def reserveNodes(self, num):
+        # Locking required to allow more nodes to become available while reservation happens
+        self.lock.acquire()
+        if len(self.freeNodes) < num:
+            self.lock.release()
+            return False
+        # Create copy of current free nodes
+        freeList = self.freeNodes[:]
+        self.lock.release()
+
+        reqMsg = self.createNewMessage("RESERVE_REQ", (self.localIP + ":" + str(self.port)))
+        for node in freeList:
+            try:
+                print "Sending RESERVE_REQ to node: " + node
+                sock = createConn(node)
+                sock.settimeout(5.0)
+                sock.send(reqMsg)
+                data = sock.recv(int(self.config['buflen']))
+                sock.close()
+                msg = Message(data)
+                if msg.type == "ACK":
+                    self.reservedNodes[node] = True
+            except:
+                pass
+           
+        if len(self.reservedNodes) == num:
+            return True
+        else:
+            relMsg = self.createNewMessage("RELEASE_REQ", (self.localIP + ":" + str(self.port)))
+            for key in self.reservedNodes:
+                print "Sending RELEASE_REQ to node: " + key
+                try:
+                    sock = createConn(key)
+                    sock.settimeout(5.0)
+                    sock.send(relMsg)
+                    sock.close()
+                except:
+                    pass
+
+            self.reservedNodes = {}
+            return False
+
  
 # Helper Routines
 def createConn(n):
