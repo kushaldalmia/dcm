@@ -4,6 +4,7 @@ import sys
 import os
 import math
 import time
+import Queue
 from message import *
 from socket import *
 import SocketServer
@@ -19,7 +20,7 @@ class jobManager:
         self.status = 'CONNECTED'
         self.curJob = None
         self.reservedBy = None
-        self.reservedNodes = {}
+        self.reservedNodes = []
     
     def makeAvailable(self):
         self.status = 'AVAILABLE'
@@ -47,18 +48,16 @@ class jobManager:
         return True
 
 def scheduleJob(jobmgr, job):
+    # If job scheduling fails, update jobmgr status
     splitJob(job)
     schedThreads = []
-    threadStatus = []
+    threadStatus = Queue.Queue(maxsize=0)
     for i in range(0, job.numNodes):
-        schedThreads[i] = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job.srcFile, "chunk" + str(i), i, threadStatus,))
-        schedThreads[i].start()
+        t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, i, threadStatus,))
+        schedThreads.append(t)
+        t.start()
     for t in schedThreads:
         t.join()
-    for i in range(0, job.numNodes):
-        if threadStatus[i] == -1:
-            # reschedule chunk i
-            pass
     return
 
 def splitJob(job):

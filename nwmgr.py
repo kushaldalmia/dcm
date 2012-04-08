@@ -3,11 +3,13 @@ import requests
 import sys
 import os
 import time
+import traceback
 from message import *
 from socket import *
 import SocketServer
 import threading
 import ConfigParser
+from sendfile import sendfile
 
 def connHandler(manager, client):
     while True:
@@ -212,6 +214,11 @@ class nwManager:
             self.lock.release()
             return False
 
+        elif msg.type == "JOB_CODE":
+            self.lock.release()
+            self.getJob(client, msg)
+            return False
+
         self.lock.release()
         return True
 
@@ -250,7 +257,10 @@ class nwManager:
                 sock.close()
                 msg = Message(data)
                 if msg.type == "ACK":
-                    self.jobmgr.reservedNodes[node] = -1
+                    newNode = {}
+                    newNode['id'] = node
+                    newNode['state'] = -1
+                    self.jobmgr.reservedNodes.append(newNode)
                     if len(self.jobmgr.reservedNodes) == num:
                         break
             except:
@@ -260,18 +270,101 @@ class nwManager:
             return True
         else:
             relMsg = self.createNewMessage("RELEASE_REQ", self.localNodeId)
-            for key in self.jobmgr.reservedNodes:
-                print "Sending RELEASE_REQ to node: " + key
+            for node in self.jobmgr.reservedNodes:
+                print "Sending RELEASE_REQ to node: " + node
                 try:
-                    sock = createConn(key)
+                    sock = createConn(node['id'])
                     sock.settimeout(5.0)
                     sock.send(relMsg)
                     sock.close()
                 except:
                     pass
 
-            self.jobmgr.reservedNodes = {}
+            self.jobmgr.reservedNodes = []
             return False
+
+    def sendFile(self, sock, filename):
+        srcfile = open(filename, "rb")
+        offset = 0
+        while True:
+            sent = sendfile(sock.fileno(), srcfile.fileno(), offset, 65536)
+            if sent == 0:
+                break
+            offset += sent
+        srcfile.close()
+    
+    def recvFile(self, sock, filename, size):
+        fileObj = open(filename, 'w')
+        offset = 0
+        while True:
+            data = sock.recv(int(self.config['buflen']))
+            if len(data) == 0:
+                break
+            fileObj.write(data)
+            offset += len(data)
+            if offset >= size:
+                break
+        fileObj.close()
+
+    def waitForAck(self, sock, index, statusQueue):
+        data = sock.recv(int(self.config['buflen']))
+        reply = Message(data)
+        if reply.type == 'NACK':
+            statusQueue.put(str(index) + ":" + "-2")
+            return False
+        return True
+
+    def scheduleJob(self, job, index, statusQueue):
+        node = self.jobmgr.reservedNodes[index]['id']
+        try:
+            sock = createConn(node)
+            codeSize = os.stat(job.srcFile).st_size
+            codeMsg = self.createNewMessage("JOB_CODE", str(codeSize))
+            sock.send(codeMsg)
+            if self.waitForAck(sock, index, statusQueue) == False: return
+            
+            self.sendFile(sock, job.srcFile)
+            if self.waitForAck(sock, index, statusQueue) == False: return
+
+            dataSize = os.stat("chunk" + str(index)).st_size
+            dataMsg = self.createNewMessage("JOB_DATA", str(dataSize))
+            sock.send(dataMsg)
+            if self.waitForAck(sock, index, statusQueue) == False: return
+            
+            self.sendFile(sock, "chunk" + str(index))
+            if self.waitForAck(sock, index, statusQueue) == False: return
+
+            statusQueue.put(str(index) + ":" + str(index))
+            sock.close()
+
+        except Exception, e:
+            print "Exception in Job Schedule:%s" % e
+            traceback.print_exc()
+            statusQueue.put(str(index) + ":" + "-2")
+            sock.close()
+            return
+
+    def getJob(self, sock, msg):
+        try:
+            ackMsg = self.createNewMessage("ACK", "")
+            sock.send(ackMsg)
+            codeSize = int(msg.data)
+            self.recvFile(sock, "code.py", codeSize)
+            sock.send(ackMsg)
+            data = sock.recv(int(self.config['buflen']))
+            msg = Message(data)
+            if msg.type != "JOB_DATA":
+                return
+            sock.send(ackMsg)
+            dataSize = int(msg.data)
+            self.recvFile(sock, "data.txt", dataSize)
+            sock.send(ackMsg)
+            sock.close()
+
+        except Exception, e:
+            print "Exception in getJob: %s" % e
+            sock.close()
+        return
 
 
 # Helper Routines
