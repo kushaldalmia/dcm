@@ -15,7 +15,9 @@ def connHandler(manager, client):
             data = client.recv(int(manager.config['buflen']))
             if manager.handleMessage(data, client) == False:
                 return
-        except:
+        except Exception, e:
+            print "Exception:%s" % e
+            manager.lock.release()
             return
 
 def acceptConn(manager, server):
@@ -31,8 +33,11 @@ def acceptConn(manager, server):
                 return
 
 def sendHeartBeats(manager):
-    hbtMsg = manager.createNewMessage("HEARTBEAT", (manager.localIP + ":" + str(manager.port)))
     manager.lock.acquire()
+    freeList = ""
+    for node in manager.freeNodes:
+        freeList += (node + ",")
+    hbtMsg = manager.createNewMessage("HEARTBEAT", freeList)
     manager.sendToNeighbors(hbtMsg)
     manager.lock.release()
     manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
@@ -118,12 +123,14 @@ class nwManager:
     def makeAvailable(self):
         avlMsg = self.createNewMessage("RES_AVL", (self.localIP + ":" + str(self.port)))
         self.lock.acquire()
+        self.freeNodes.append((self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(avlMsg)
         self.lock.release()
     
     def makeUnavailable(self):
         unavlMsg = self.createNewMessage("RES_UNAVL", (self.localIP + ":" + str(self.port)))
         self.lock.acquire()
+        self.freeNodes.remove((self.localIP + ":" + str(self.port)))
         self.sendToNeighbors(unavlMsg)
         self.lock.release()
 
@@ -143,27 +150,36 @@ class nwManager:
             print "Added new node to neighbor " + msg.data
 
         elif msg.type == "HEARTBEAT":
-            aliveTimer, count = self.neighbors[msg.data]
+            aliveTimer, count = self.neighbors[msg.src]
             aliveTimer.cancel()
-            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.data,))
+            if len(msg.data) > 0:
+                freeList = msg.data.split(",")
+                for node in freeList:
+                    if len(node) > 0 and node not in self.freeNodes:
+                        self.freeNodes.append(node)
+            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.src,))
             aliveTimer.start()
-            self.neighbors[msg.data] = (aliveTimer, 0)
+            self.neighbors[msg.src] = (aliveTimer, 0)
 
         elif msg.type == "RES_AVL":
             if msg.data not in self.freeNodes:
                 self.freeNodes.append(msg.data)
-                msg.ttl -= 1
-                if msg.ttl != 0:
-                    # Handle Resource Unavailable Message
-                    self.sendExceptSource(msg.toString(), msg.sender)
-
-        elif msg.type == "RES_UNAVL":
-            if msg.data in self.freeNodes:
-                self.freeNodes.remove(msg.data)
             msg.ttl -= 1
             if msg.ttl != 0:
                 # Handle Resource Unavailable Message
-                self.sendExceptSource(msg.toString(), msg.sender)
+                self.sendExceptSource(msg.toString(), msg.src)
+
+        elif msg.type == "RES_UNAVL":
+            # TODO: Handle case when node was running job; Reschedule Job
+            if msg.data in self.freeNodes:
+                self.freeNodes.remove(msg.data)
+            if self.jobmgr.status == 'RESERVED' and self.jobmgr.reservedBy == msg.data:
+                self.jobmgr.status = 'AVAILABLE'
+                self.jobmgr.reservedBy = None
+            msg.ttl -= 1
+            if msg.ttl != 0:
+                # Handle Resource Unavailable Message
+                self.sendExceptSource(msg.toString(), msg.src)
         
         elif msg.type == "RESERVE_REQ":
             reserved = False
@@ -176,6 +192,7 @@ class nwManager:
                 client.send(ackMsg)
                 if reserved == True:
                     self.jobmgr.status = 'RESERVED'
+                    self.jobmgr.reservedBy = msg.data
             except:
                 pass
             client.close()

@@ -18,6 +18,7 @@ class jobManager:
         self.nwmgr.startManager()
         self.status = 'CONNECTED'
         self.curJob = None
+        self.reservedBy = None
     
     def makeAvailable(self):
         self.status = 'AVAILABLE'
