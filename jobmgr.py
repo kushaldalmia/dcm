@@ -5,6 +5,7 @@ import os
 import math
 import time
 import Queue
+import subprocess
 from message import *
 from socket import *
 import SocketServer
@@ -45,7 +46,13 @@ class jobManager:
         self.status = 'JOBSCHED'
         t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
         t.start()
+        self.status = 'JOBEXEC'
         return True
+    
+    def runJob(self):
+        t = threading.Thread(target=executeJob, args=(self,))
+        t.start()
+        return
 
 def scheduleJob(jobmgr, job):
     # If job scheduling fails, update jobmgr status
@@ -65,3 +72,17 @@ def splitJob(job):
     lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
     cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
     os.system(cmd)
+
+def executeJob(jobmgr):
+    try:
+        job = jobmgr.curJob
+        ipObj = open(job.ipFile, 'r')
+        opObj = open(job.opFile, 'w')
+        p = subprocess.Popen(["python code.py"], stdin=ipObj, stdout=opObj)
+        p.wait()
+        # Check returncode for p; Send error to owner
+        ipObj.close()
+        opObj.close()
+    except:
+        # Send error to owner
+        pass
