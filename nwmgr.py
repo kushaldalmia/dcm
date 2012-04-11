@@ -3,7 +3,7 @@ import requests
 import sys
 import os
 import time
-import traceback
+import traceback,tempfile
 from message import *
 from socket import *
 import SocketServer
@@ -98,6 +98,7 @@ class nwManager:
         self.ttl = self.config['ttl']
         self.destroy = False
         self.jobmgr = jobmgr
+        self.tempdir = tempfile.mkdtemp()
 
     def startManager(self):
         curTime = time.time()
@@ -351,8 +352,12 @@ class nwManager:
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
             codeSize = int(msg.data)
-            self.recvFile(sock, "script.py", codeSize)
-            os.chmod("script.py",0777)
+            codeFile = os.path.join(self.tempdir, "script.py")
+            dataFile = os.path.join(self.tempdir, "data.txt")
+            opFile = os.path.join(self.tempdir, "op.txt")
+            print codeFile
+            self.recvFile(sock, codeFile, codeSize)
+            os.chmod(codeFile, 0777)
             sock.send(ackMsg)
             data = sock.recv(int(self.config['buflen']))
             msg = Message(data)
@@ -360,15 +365,16 @@ class nwManager:
                 return
             sock.send(ackMsg)
             dataSize = int(msg.data)
-            self.recvFile(sock, "data.txt", dataSize)
+            self.recvFile(sock, dataFile, dataSize)
             sock.send(ackMsg)
-            job = Job("data.txt", "script.py", "op.txt", 0)
+            job = Job(dataFile, codeFile, opFile, 0)
             job.owner = msg.src
             self.jobmgr.curJob = job
             sock.close()
 
         except Exception, e:
             print "Exception in getJob: %s" % e
+            traceback.print_exc()
             sock.close()
         return
 
