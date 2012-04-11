@@ -78,7 +78,8 @@ def executeJob(jobmgr):
         job = jobmgr.curJob
         ipObj = open(job.ipFile, 'r')
         opObj = open(job.opFile, 'w')
-        p = subprocess.Popen(["python code.py"], stdin=ipObj, stdout=opObj)
+        print "executing job"
+        p = subprocess.Popen([sys.executable, 'script.py'], stdin=ipObj, stdout=opObj)
         p.wait()
         # Check returncode for p; Send error to owner
         ipObj.close()

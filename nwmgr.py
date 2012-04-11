@@ -351,8 +351,8 @@ class nwManager:
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
             codeSize = int(msg.data)
-            self.recvFile(sock, "code.py", codeSize)
-            os.chmod("code.py",0777)
+            self.recvFile(sock, "script.py", codeSize)
+            os.chmod("script.py",0777)
             sock.send(ackMsg)
             data = sock.recv(int(self.config['buflen']))
             msg = Message(data)
@@ -362,7 +362,7 @@ class nwManager:
             dataSize = int(msg.data)
             self.recvFile(sock, "data.txt", dataSize)
             sock.send(ackMsg)
-            job = Job("data.txt", "code.py", "op.txt", 0)
+            job = Job("data.txt", "script.py", "op.txt", 0)
             job.owner = msg.src
             self.jobmgr.curJob = job
             sock.close()
