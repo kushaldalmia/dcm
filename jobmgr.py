@@ -84,8 +84,8 @@ def scheduleJob(jobmgr, job):
     if workingNodes < job.numNodes:
         # Call rescheduling function
         pass
-    self.jobTimer = threading.Timer(5, handleJobTimeout, args=(jobmgr,))
-    self.jobTimer.start()
+    jobmgr.jobTimer = threading.Timer(5, handleJobTimeout, args=(jobmgr,))
+    jobmgr.jobTimer.start()
     return
 
 def splitJob(job):
@@ -120,12 +120,13 @@ def handleJobTimeout(jobmgr):
     jobmgr.chunkLock.release()
     if jobStatus == True:
         print "Job Execution complete"
-        jobmgr.status = 'AVAILABLE'
+        jobmgr.status = 'CONNECTED'
         jobmgr.curJob = None
+        jobmgr.reservedNodes = []
     else:
         print "Job Execution incomplete! Resetting check timer"
-        self.jobTimer = threading.Timer(5, handleJobTimeout, args=(jobmgr,))
-        self.jobTimer.start()
+        jobmgr.jobTimer = threading.Timer(5, handleJobTimeout, args=(jobmgr,))
+        jobmgr.jobTimer.start()
 
     # In case of multiple timeouts:
     # Fail current job

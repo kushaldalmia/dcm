@@ -285,7 +285,7 @@ class nwManager:
         else:
             relMsg = self.createNewMessage("RELEASE_REQ", self.localNodeId)
             for node in self.jobmgr.reservedNodes:
-                print "Sending RELEASE_REQ to node: " + node
+                print "Sending RELEASE_REQ to node: " + node['id']
                 try:
                     sock = createConn(node['id'])
                     sock.settimeout(5.0)
