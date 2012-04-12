@@ -226,7 +226,7 @@ class nwManager:
             chunkindex = -1
             for nodeinfo in self.jobmgr.reservedNodes:
                 if nodeinfo['id'] == msg.src:
-                    chunkindex = nodeinfo['status']
+                    chunkindex = nodeinfo['state']
                     break
             self.lock.release()
             # Handle case for non-existent chunk index
@@ -426,6 +426,9 @@ class nwManager:
             self.recvFile(sock, "result" + str(chunkindex) + ".txt", opsize)
             sock.send(ackMsg)
             sock.close()
+            self.jobmgr.chunkLock.acquire()
+            self.jobmgr.chunkStatus[chunkindex] = True
+            self.jobmgr.chunkLock.release()
         except:
             pass
 
