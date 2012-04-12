@@ -50,7 +50,7 @@ def handleTimeout(manager, node):
     manager.lock.acquire()
     timer, count = manager.neighbors[node]
     if manager.destroy == True:
-        manager.lock.acquire()
+        manager.lock.release()
         return
 
     if count > int(manager.config['retrycount']):
@@ -222,6 +222,17 @@ class nwManager:
             self.jobmgr.runJob()
             return False
 
+        elif msg.type == "JOB_COMPLETE":
+            chunkindex = -1
+            for nodeinfo in self.jobmgr.reservedNodes:
+                if nodeinfo['id'] == msg.src:
+                    chunkindex = nodeinfo['status']
+                    break
+            self.lock.release()
+            # Handle case for non-existent chunk index
+            self.handleJobResponse(msg, chunkindex, client)
+            return False
+
         self.lock.release()
         return True
 
@@ -309,41 +320,52 @@ class nwManager:
                 break
         fileObj.close()
 
-    def waitForAck(self, sock, index, statusQueue):
-        data = sock.recv(int(self.config['buflen']))
-        reply = Message(data)
-        if reply.type == 'NACK':
-            statusQueue.put(str(index) + ":" + "-2")
+    def waitForAck(self, sock):
+        try:
+            data = sock.recv(int(self.config['buflen']))
+            reply = Message(data)
+            if reply.type == 'NACK':
+                return False
+            else:
+                return True
+        except:
             return False
-        return True
 
-    def scheduleJob(self, job, index, statusQueue):
-        node = self.jobmgr.reservedNodes[index]['id']
+    def scheduleJob(self, job, chunkindex, nodeindex, statusQueue):
+        node = self.jobmgr.reservedNodes[nodeindex]['id']
         try:
             sock = createConn(node)
             codeSize = os.stat(job.srcFile).st_size
             codeMsg = self.createNewMessage("JOB_CODE", str(codeSize))
             sock.send(codeMsg)
-            if self.waitForAck(sock, index, statusQueue) == False: return
+            if self.waitForAck(sock) == False:
+                statusQueue.put(str(nodeindex) + ":" + "-2")
+                return
             
             self.sendFile(sock, job.srcFile)
-            if self.waitForAck(sock, index, statusQueue) == False: return
+            if self.waitForAck(sock) == False:
+                statusQueue.put(str(nodeindex) + ":" + "-2")
+                return
 
-            dataSize = os.stat("chunk" + str(index)).st_size
+            dataSize = os.stat("chunk" + str(chunkindex)).st_size
             dataMsg = self.createNewMessage("JOB_DATA", str(dataSize))
             sock.send(dataMsg)
-            if self.waitForAck(sock, index, statusQueue) == False: return
+            if self.waitForAck(sock) == False:
+                statusQueue.put(str(nodeindex) + ":" + "-2")
+                return
             
-            self.sendFile(sock, "chunk" + str(index))
-            if self.waitForAck(sock, index, statusQueue) == False: return
+            self.sendFile(sock, "chunk" + str(chunkindex))
+            if self.waitForAck(sock) == False:
+                statusQueue.put(str(nodeindex) + ":" + "-2")
+                return
 
-            statusQueue.put(str(index) + ":" + str(index))
+            statusQueue.put(str(nodeindex) + ":" + str(chunkindex))
             sock.close()
 
         except Exception, e:
             print "Exception in Job Schedule:%s" % e
             traceback.print_exc()
-            statusQueue.put(str(index) + ":" + "-2")
+            statusQueue.put(str(nodeindex) + ":" + "-2")
             sock.close()
             return
 
@@ -378,6 +400,34 @@ class nwManager:
             sock.close()
         return
 
+    def sendResponse(self, job):
+        try:
+            sock = createConn(job.owner)
+            opsize = os.stat(job.opFile).st_size
+            opMsg = self.createNewMessage("JOB_COMPLETE", str(opsize))
+            sock.send(opMsg)
+            if self.waitForAck(sock) == False:
+                return
+            sock.sendFile(sock, job.opFile)
+            self.waitForAck(sock)
+            sock.close()
+            return
+        except:
+            print "Exception in getJob: %s" % e
+            traceback.print_exc()
+            sock.close()
+            return
+            
+    def handleJobResponse(self, msg, chunkindex, sock):
+        try:
+            opsize = int(msg.data)
+            ackMsg = self.createNewMessage("ACK", "")
+            sock.send(ackMsg)
+            self.recvFile(sock, "result" + str(chunkindex) + ".txt", opsize)
+            sock.send(ackMsg)
+            sock.close()
+        except:
+            pass
 
 # Helper Routines
 def createConn(n):

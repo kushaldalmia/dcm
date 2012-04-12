@@ -54,17 +54,33 @@ class jobManager:
         t.start()
         return
 
+    def completeJob(self):
+        self.nwmgr.sendResponse(self.curJob)
+        self.curJob = None
+        self.status = 'AVAILABLE'
+
 def scheduleJob(jobmgr, job):
     # If job scheduling fails, update jobmgr status
     splitJob(job)
     schedThreads = []
     threadStatus = Queue.Queue(maxsize=0)
     for i in range(0, job.numNodes):
-        t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, i, threadStatus,))
+        t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, i, i, threadStatus,))
         schedThreads.append(t)
         t.start()
     for t in schedThreads:
         t.join()
+    workingNodes = 0
+    while threadStatus.empty() == False:
+        status = threadStatus.get_nowait().split(":")
+        index = int(status[0])
+        state = int(status[1])
+        self.reservedNodes[index]['status'] = state
+        if state >= 0: 
+            workingNodes += 1
+    if workingNodes < job.numNodes:
+        # Call rescheduling function
+        pass
     return
 
 def splitJob(job):
@@ -84,6 +100,7 @@ def executeJob(jobmgr):
         # Check returncode for p; Send error to owner
         ipObj.close()
         opObj.close()
+        jobmgr.completeJob()
     except:
         # Send error to owner
         pass
