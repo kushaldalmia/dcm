@@ -66,13 +66,19 @@ def scheduleJob(jobmgr, job):
     splitJob(job)
     schedThreads = []
     threadStatus = Queue.Queue(maxsize=0)
+
     for i in range(0, job.numNodes):
         jobmgr.chunkStatus[i] = False
+        jobmgr.reservedNodes[i]['state'] = i
+
+    for i in range(0, job.numNodes):
         t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, i, i, threadStatus,))
         schedThreads.append(t)
         t.start()
+
     for t in schedThreads:
         t.join()
+
     workingNodes = 0
     while threadStatus.empty() == False:
         status = threadStatus.get_nowait().split(":")
@@ -84,7 +90,7 @@ def scheduleJob(jobmgr, job):
     if workingNodes < job.numNodes:
         # Call rescheduling function
         pass
-    jobmgr.jobTimer = threading.Timer(5, handleJobTimeout, args=(jobmgr,))
+    jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
     jobmgr.jobTimer.start()
     return
 
@@ -125,7 +131,7 @@ def handleJobTimeout(jobmgr):
         jobmgr.reservedNodes = []
     else:
         print "Job Execution incomplete! Resetting check timer"
-        jobmgr.jobTimer = threading.Timer(5, handleJobTimeout, args=(jobmgr,))
+        jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
         jobmgr.jobTimer.start()
 
     # In case of multiple timeouts:
