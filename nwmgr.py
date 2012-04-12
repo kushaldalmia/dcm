@@ -408,7 +408,7 @@ class nwManager:
             sock.send(opMsg)
             if self.waitForAck(sock) == False:
                 return
-            sock.sendFile(sock, job.opFile)
+            self.sendFile(sock, job.opFile)
             self.waitForAck(sock)
             sock.close()
             return

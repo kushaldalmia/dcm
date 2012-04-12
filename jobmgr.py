@@ -75,7 +75,7 @@ def scheduleJob(jobmgr, job):
         status = threadStatus.get_nowait().split(":")
         index = int(status[0])
         state = int(status[1])
-        self.reservedNodes[index]['status'] = state
+        jobmgr.reservedNodes[index]['status'] = state
         if state >= 0: 
             workingNodes += 1
     if workingNodes < job.numNodes:
