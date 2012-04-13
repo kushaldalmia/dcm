@@ -230,17 +230,23 @@ class nwManager:
 
         elif msg.type == "JOB_CODE":
             self.lock.release()
-            self.getJob(client, msg)
+            if self.getJob(client, msg) == False:
+                self.jobmgr.status = 'AVAILABLE'
+                return False
             self.jobmgr.runJob()
             return False
 
         elif msg.type == "JOB_COMPLETE":
+            if self.jobmgr.curJob == None:
+                self.lock.release()
+                return False
             chunkindex = -1
-            for nodeinfo in self.jobmgr.reservedNodes:
-                if nodeinfo['id'] == msg.src:
-                    chunkindex = nodeinfo['state']
-                    break
+            if msg.src in self.jobmgr.reservedNodes:
+                chunkindex = self.jobmgr.reservedNodes[msg.src]
+                
             self.lock.release()
+            if chunkindex == -1:
+                return False
             # Handle case for non-existent chunk index
             self.handleJobResponse(msg, chunkindex, client)
             return False
@@ -263,16 +269,26 @@ class nwManager:
             except:
                 pass
 
-    def reserveNodes(self, num):
-        # Locking required to allow more nodes to become available while reservation happens
+    def reserveNode(self):
+        freeList = []
         self.lock.acquire()
-        if len(self.freeNodes) < num:
+        print self.jobmgr.reservedNodes
+        print self.freeNodes
+        if len(self.freeNodes) < 1:
             self.lock.release()
-            return False
-        # Create copy of current free nodes
-        freeList = self.freeNodes[:]
+            print "Reserve node failing due to less number of free nodes"
+            return 'FAILURE'
+        for node in self.freeNodes:
+            if node not in self.jobmgr.reservedNodes:
+                freeList.append(node)
+            else:
+                print node + " is in reserved nodes already!"
         self.lock.release()
 
+        if len(freeList) < 1:
+            print "Reserve node failing due to nodes in reserved list"
+            return 'FAILURE'
+    
         reqMsg = self.createNewMessage("RESERVE_REQ", self.localNodeId)
         for node in freeList:
             try:
@@ -280,35 +296,18 @@ class nwManager:
                 sock = createConn(node)
                 sock.settimeout(5.0)
                 sock.send(reqMsg)
-                data = recvMessage(sock)
-                sock.close()
-                msg = Message(data)
-                if msg.type == "ACK":
-                    newNode = {}
-                    newNode['id'] = node
-                    newNode['state'] = -1
-                    self.jobmgr.reservedNodes.append(newNode)
-                    if len(self.jobmgr.reservedNodes) == num:
-                        break
-            except:
-                pass
-
-        if len(self.jobmgr.reservedNodes) == num:
-            return True
-        else:
-            relMsg = self.createNewMessage("RELEASE_REQ", self.localNodeId)
-            for node in self.jobmgr.reservedNodes:
-                print "Sending RELEASE_REQ to node: " + node['id']
-                try:
-                    sock = createConn(node['id'])
-                    sock.settimeout(5.0)
-                    sock.send(relMsg)
+                if self.waitForMsg(sock,'ACK') == True:
+                    self.lock.acquire()
+                    self.jobmgr.reservedNodes[node] = -1
+                    self.lock.release()
                     sock.close()
-                except:
-                    pass
-
-            self.jobmgr.reservedNodes = []
-            return False
+                    return node
+                else:
+                    sock.close()
+                    print "RESERVE_REQ failed due to " + msg.type
+            except Exception,e:
+                print "Exception:%s" % e
+        return 'FAILURE'
 
     def sendFile(self, sock, filename):
         srcfile = open(filename, "rb")
@@ -333,52 +332,56 @@ class nwManager:
                 break
         fileObj.close()
 
-    def waitForAck(self, sock):
+    def waitForMsg(self, sock, msgType):
         try:
+            sock.settimeout(3.0)
             data = recvMessage(sock)
             reply = Message(data)
-            if reply.type == 'NACK':
+            sock.settimeout(None)
+            if reply.type != msgType:
                 return False
             else:
                 return True
         except:
+            sock.settimeout(None)
             return False
 
-    def scheduleJob(self, job, chunkindex, nodeindex, statusQueue):
-        node = self.jobmgr.reservedNodes[nodeindex]['id']
+    def scheduleJob(self, job, chunkindex, node, unScheduledQueue):
         try:
             sock = createConn(node)
             codeSize = os.stat(job.srcFile).st_size
             codeMsg = self.createNewMessage("JOB_CODE", str(codeSize))
             sock.send(codeMsg)
-            if self.waitForAck(sock) == False:
-                statusQueue.put(str(nodeindex) + ":" + "-2")
+            if self.waitForMsg(sock,'ACK') == False:
+                unScheduledQueue.put(chunkindex)
                 return
             
             self.sendFile(sock, job.srcFile)
-            if self.waitForAck(sock) == False:
-                statusQueue.put(str(nodeindex) + ":" + "-2")
+            if self.waitForMsg(sock,'ACK') == False:
+                unScheduledQueue.put(chunkindex)
                 return
 
             dataSize = os.stat("chunk" + str(chunkindex)).st_size
             dataMsg = self.createNewMessage("JOB_DATA", str(dataSize))
             sock.send(dataMsg)
-            if self.waitForAck(sock) == False:
-                statusQueue.put(str(nodeindex) + ":" + "-2")
+            if self.waitForMsg(sock,'ACK') == False:
+                unScheduledQueue.put(chunkindex)
                 return
             
             self.sendFile(sock, "chunk" + str(chunkindex))
-            if self.waitForAck(sock) == False:
-                statusQueue.put(str(nodeindex) + ":" + "-2")
+            if self.waitForMsg(sock,'ACK') == False:
+                unScheduledQueue.put(chunkindex)
                 return
-
-            statusQueue.put(str(nodeindex) + ":" + str(chunkindex))
+            
+            self.lock.acquire()
+            self.jobmgr.reservedNodes[node] = chunkindex
+            self.lock.release()
             sock.close()
 
         except Exception, e:
             print "Exception in Job Schedule:%s" % e
             traceback.print_exc()
-            statusQueue.put(str(nodeindex) + ":" + "-2")
+            unScheduledQueue.put(chunkindex)
             sock.close()
             return
 
@@ -394,10 +397,13 @@ class nwManager:
             self.recvFile(sock, codeFile, codeSize)
             os.chmod(codeFile, 0777)
             sock.send(ackMsg)
+            # To allow timeouts for JOB_DATA msg
+            sock.settimeout(3.0)
             data = recvMessage(sock)
             msg = Message(data)
             if msg.type != "JOB_DATA":
                 return
+            sock.settimeout(None)
             sock.send(ackMsg)
             dataSize = int(msg.data)
             self.recvFile(sock, dataFile, dataSize)
@@ -411,7 +417,8 @@ class nwManager:
             print "Exception in getJob: %s" % e
             traceback.print_exc()
             sock.close()
-        return
+            return False
+        return True
 
     def sendResponse(self, job):
         try:
@@ -419,14 +426,14 @@ class nwManager:
             opsize = os.stat(job.opFile).st_size
             opMsg = self.createNewMessage("JOB_COMPLETE", str(opsize))
             sock.send(opMsg)
-            if self.waitForAck(sock) == False:
+            if self.waitForMsg(sock,'ACK') == False:
                 return
             self.sendFile(sock, job.opFile)
-            self.waitForAck(sock)
+            self.waitForMsg(sock,'ACK')
             sock.close()
             return
         except:
-            print "Exception in getJob: %s" % e
+            print "Exception in sendResponse: %s" % e
             traceback.print_exc()
             sock.close()
             return
@@ -439,11 +446,10 @@ class nwManager:
             self.recvFile(sock, "result" + str(chunkindex) + ".txt", opsize)
             sock.send(ackMsg)
             sock.close()
-            self.jobmgr.chunkLock.acquire()
-            self.jobmgr.chunkStatus[chunkindex] = True
-            self.jobmgr.chunkLock.release()
+            self.jobmgr.chunkStatus.put(chunkindex)
         except:
-            pass
+            print "Failure during getting job response! Rescheduling Chunk " + chunkindex
+            self.jobmgr.unScheduledQueue.put(chunkindex)
 
 # Helper Routines
 def createConn(n):

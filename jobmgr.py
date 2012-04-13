@@ -21,9 +21,9 @@ class jobManager:
         self.status = 'CONNECTED'
         self.curJob = None
         self.reservedBy = None
-        self.reservedNodes = []
-        self.chunkLock = threading.Lock()
-        self.chunkStatus = {}
+        self.reservedNodes = {}
+        self.chunkStatus = Queue.Queue(maxsize=0)
+        self.unScheduledQueue = Queue.Queue(maxsize=0)
     
     def makeAvailable(self):
         self.status = 'AVAILABLE'
@@ -41,10 +41,11 @@ class jobManager:
         if self.curJob != None or self.status == 'AVAILABLE':
             return False
         print "Job started at : " + str(time.time())
-        if self.nwmgr.reserveNodes(job.numNodes) == False:
-            print "Unable to reserve nodes for Job!"
-            return False
-        print "Job Manager reserved nodes for Job!"
+        self.unScheduledQueue = Queue.Queue(maxsize=0)
+        self.chunkStatus = Queue.Queue(maxsize=0)
+        self.reservedNodes = {}
+        for i in range(0, job.numNodes):
+            self.unScheduledQueue.put(i)
         self.curJob = job
         self.status = 'JOBSCHED'
         t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
@@ -59,40 +60,32 @@ class jobManager:
 
     def completeJob(self):
         self.nwmgr.sendResponse(self.curJob)
-        self.curJob = None
         self.status = 'AVAILABLE'
-
+        print 'Made node available!'
+        self.curJob = None
+        
 def scheduleJob(jobmgr, job):
-    # If job scheduling fails, update jobmgr status
     splitJob(job)
-    schedThreads = []
-    threadStatus = Queue.Queue(maxsize=0)
-
-    for i in range(0, job.numNodes):
-        jobmgr.chunkStatus[i] = False
-        jobmgr.reservedNodes[i]['state'] = i
-
-    for i in range(0, job.numNodes):
-        t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, i, i, threadStatus,))
-        schedThreads.append(t)
-        t.start()
-
-    for t in schedThreads:
-        t.join()
-
-    workingNodes = 0
-    while threadStatus.empty() == False:
-        status = threadStatus.get_nowait().split(":")
-        index = int(status[0])
-        state = int(status[1])
-        jobmgr.reservedNodes[index]['state'] = state
-        if state >= 0: 
-            workingNodes += 1
-    if workingNodes < job.numNodes:
-        # Call rescheduling function
-        pass
+    
     jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
     jobmgr.jobTimer.start()
+
+    while True:
+        chunkindex = jobmgr.unScheduledQueue.get()
+        print "Scheduling chunk index " + str(chunkindex)
+        if chunkindex == -1:
+            print "Job Completed"
+            jobmgr.curJob = None
+            return
+        node = jobmgr.nwmgr.reserveNode()
+        if node == 'FAILURE':
+            print "Job Execution Failed"
+            # Send RES_RELEASE to all nodes in reservedNodes
+            jobmgr.curJob = None
+            return
+        t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, chunkindex, node, jobmgr.unScheduledQueue,))
+        t.start()
+    
     return
 
 def splitJob(job):
@@ -116,27 +109,17 @@ def executeJob(jobmgr):
         jobmgr.completeJob()
     except:
         # Send error to owner
-        pass
+        jobmgr.status = 'AVAILABLE'
 
 def handleJobTimeout(jobmgr):
-    jobStatus = True
-    jobmgr.chunkLock.acquire()
-    for key in jobmgr.chunkStatus:
-        if jobmgr.chunkStatus[key] == False:
-            jobStatus = False
-            break
-    jobmgr.chunkLock.release()
-    if jobStatus == True:
-        print "Job Execution complete at " + str(time.time())
-        jobmgr.status = 'CONNECTED'
-        jobmgr.curJob = None
-        jobmgr.reservedNodes = []
+    if jobmgr.curJob == None:
+        return
+    
+    if jobmgr.chunkStatus.qsize() == jobmgr.curJob.numNodes:
+        jobmgr.unScheduledQueue.put(-1)
+        jobmgr.chunkStatus = Queue.Queue(maxsize=0)
+        print "Added chunkindex -1 to unsched Queue"
     else:
-        print "Job Execution incomplete! Resetting check timer"
         jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
         jobmgr.jobTimer.start()
-
-    # In case of multiple timeouts:
-    # Fail current job
-    # Release reserved nodes
     return
