@@ -248,7 +248,7 @@ class nwManager:
         self.lock.release()
         return True
 
-    def createNewMessage(self, msgType, data, ttl=32):
+    def createNewMessage(self, msgType, data, ttl=2):
         msg = self.localNodeId + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         formattedMsg = "%04d" % len(msg) + "-" + msg
         self.seqno += 1
