@@ -16,6 +16,8 @@ MSG_LEN_FIELD = 5
 
 def recvMessage(sock):
     msgLen = sock.recv(MSG_LEN_FIELD)
+    if len(msgLen) == 0:
+        return ''
     msgLen = int(msgLen[:4])
     data = sock.recv(msgLen)
     return data
@@ -28,7 +30,7 @@ def connHandler(manager, client):
                 return
         except Exception, e:
             print "Exception:%s" % e
-            manager.lock.release()
+            traceback.print_exc()
             return
 
 def acceptConn(manager, server):
@@ -184,8 +186,9 @@ class nwManager:
                 self.freeNodes.append(msg.data)
             msg.ttl -= 1
             if msg.ttl != 0:
+                newMsg = self.createNewMessage(msg.type, msg.data, msg.ttl)
                 # Handle Resource Unavailable Message
-                self.sendExceptSource(msg.toString(), msg.src)
+                self.sendExceptSource(newMsg, msg.src)
 
         elif msg.type == "RES_UNAVL":
             # TODO: Handle case when node was running job; Reschedule Job
@@ -196,6 +199,7 @@ class nwManager:
                 self.jobmgr.reservedBy = None
             msg.ttl -= 1
             if msg.ttl != 0:
+                newMsg = self.createNewMessage(msg.type, msg.data, msg.ttl)
                 # Handle Resource Unavailable Message
                 self.sendExceptSource(msg.toString(), msg.src)
 
@@ -244,7 +248,7 @@ class nwManager:
         self.lock.release()
         return True
 
-    def createNewMessage(self, msgType, data):
+    def createNewMessage(self, msgType, data, ttl=32):
         msg = self.localNodeId + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
         formattedMsg = "%04d" % len(msg) + "-" + msg
         self.seqno += 1
