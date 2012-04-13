@@ -201,7 +201,7 @@ class nwManager:
             if msg.ttl != 0:
                 newMsg = self.createNewMessage(msg.type, msg.data, msg.ttl)
                 # Handle Resource Unavailable Message
-                self.sendExceptSource(msg.toString(), msg.src)
+                self.sendExceptSource(newMsg, msg.src)
 
         elif msg.type == "RESERVE_REQ":
             reserved = False
@@ -249,7 +249,7 @@ class nwManager:
         return True
 
     def createNewMessage(self, msgType, data, ttl=2):
-        msg = self.localNodeId + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        msg = self.localNodeId + "-" + str(self.seqno) + "-" + str(ttl) + "-" + msgType + "-" + data
         formattedMsg = "%04d" % len(msg) + "-" + msg
         self.seqno += 1
         return formattedMsg
