@@ -40,7 +40,7 @@ class jobManager:
     def addJob(self, job):
         if self.curJob != None or self.status == 'AVAILABLE':
             return False
-        print "Job started at : " + time.time()
+        print "Job started at : " + str(time.time())
         if self.nwmgr.reserveNodes(job.numNodes) == False:
             print "Unable to reserve nodes for Job!"
             return False
@@ -106,9 +106,10 @@ def executeJob(jobmgr):
         job = jobmgr.curJob
         ipObj = open(job.ipFile, 'r')
         opObj = open(job.opFile, 'w')
-        print "executing job"
+        print "executing job starting at " + str(time.time())
         p = subprocess.Popen([sys.executable, job.srcFile], stdin=ipObj, stdout=opObj)
         p.wait()
+        print "job execution finished at " + str(time.time())
         # Check returncode for p; Send error to owner
         ipObj.close()
         opObj.close()
@@ -126,7 +127,7 @@ def handleJobTimeout(jobmgr):
             break
     jobmgr.chunkLock.release()
     if jobStatus == True:
-        print "Job Execution complete at " + time.time()
+        print "Job Execution complete at " + str(time.time())
         jobmgr.status = 'CONNECTED'
         jobmgr.curJob = None
         jobmgr.reservedNodes = []

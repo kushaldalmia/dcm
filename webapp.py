@@ -47,7 +47,8 @@ def unavailable():
 @app.route('/addjob', methods=['GET'])
 def addjob():
 	global mgr
-	job = Job("/home/kushal/ipfile.txt", "/home/kushal/test.py", "", 2)
+	job = Job(request.args.get('ipfile', ''), request.args.get('srcfile', ''), 
+		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')))
 	mgr.addJob(job)
 	return render_template('home.html', status="unavailable")
 

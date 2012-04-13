@@ -20,11 +20,30 @@
       <dd><input type=submit value="Available">
     </dl>
   </form>
-  {% endif %}
   <form action="{{ url_for('addjob') }}" method=get>
-    <dl>
-      <dd><input type=submit value="Add Job">
-    </dl>
+    <table>
+      <tr>
+	<td>Input File</td>
+	<td><input type="text" name="ipfile" /></td>
+      </tr>
+      <tr>
+	<td>Output File</td>
+	<td><input type="text" name="opfile" /></td>
+      </tr>
+      <tr>
+	<td>Source File</td>
+	<td><input type="text" name="srcfile" /></td>
+      </tr>
+      <tr>
+	<td>Nodes</td>
+	<td><input type="text" name="numnodes" /></td>
+      </tr>
+      <tr>
+	<td><input type=submit value="Add Job"></td>
+      </tr>
+    </table>
   </form>
+  {% endif %}
+  
 </body>
 

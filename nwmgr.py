@@ -165,7 +165,7 @@ class nwManager:
             if len(msg.data) > 0:
                 freeList = msg.data.split(",")
                 for node in freeList:
-                    if len(node) > 0 and node not in self.freeNodes:
+                    if len(node) > 0 and len(node) < 22 and node not in self.freeNodes:
                         self.freeNodes.append(node)
             aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.src,))
             aliveTimer.start()
