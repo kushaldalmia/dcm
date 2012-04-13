@@ -12,10 +12,18 @@ import ConfigParser
 from sendfile import sendfile
 from job import *
 
+MSG_LEN_FIELD = 5
+
+def recvMessage(sock):
+    msgLen = sock.recv(MSG_LEN_FIELD)
+    msgLen = int(msgLen[:4])
+    data = sock.recv(msgLen)
+    return data
+
 def connHandler(manager, client):
     while True:
         try:
-            data = client.recv(int(manager.config['buflen']))
+            data = recvMessage(client)
             if manager.handleMessage(data, client) == False:
                 return
         except Exception, e:
@@ -238,8 +246,9 @@ class nwManager:
 
     def createNewMessage(self, msgType, data):
         msg = self.localNodeId + "-" + str(self.seqno) + "-" + str(self.ttl) + "-" + msgType + "-" + data
+        formattedMsg = "%04d" % len(msg) + "-" + msg
         self.seqno += 1
-        return msg
+        return formattedMsg
 
     def sendExceptSource(self, msg, src):
         for key in self.conn:
@@ -267,7 +276,7 @@ class nwManager:
                 sock = createConn(node)
                 sock.settimeout(5.0)
                 sock.send(reqMsg)
-                data = sock.recv(int(self.config['buflen']))
+                data = recvMessage(sock)
                 sock.close()
                 msg = Message(data)
                 if msg.type == "ACK":
@@ -311,7 +320,7 @@ class nwManager:
         fileObj = open(filename, 'w')
         offset = 0
         while True:
-            data = sock.recv(int(self.config['buflen']))
+            data = sock.recv((size - offset))
             if len(data) == 0:
                 break
             fileObj.write(data)
@@ -322,7 +331,7 @@ class nwManager:
 
     def waitForAck(self, sock):
         try:
-            data = sock.recv(int(self.config['buflen']))
+            data = recvMessage(sock)
             reply = Message(data)
             if reply.type == 'NACK':
                 return False
@@ -381,7 +390,7 @@ class nwManager:
             self.recvFile(sock, codeFile, codeSize)
             os.chmod(codeFile, 0777)
             sock.send(ackMsg)
-            data = sock.recv(int(self.config['buflen']))
+            data = recvMessage(sock)
             msg = Message(data)
             if msg.type != "JOB_DATA":
                 return
