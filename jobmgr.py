@@ -40,6 +40,7 @@ class jobManager:
     def addJob(self, job):
         if self.curJob != None or self.status == 'AVAILABLE':
             return False
+        print "Job started at : " + time.time()
         if self.nwmgr.reserveNodes(job.numNodes) == False:
             print "Unable to reserve nodes for Job!"
             return False
@@ -125,7 +126,7 @@ def handleJobTimeout(jobmgr):
             break
     jobmgr.chunkLock.release()
     if jobStatus == True:
-        print "Job Execution complete"
+        print "Job Execution complete at " + time.time()
         jobmgr.status = 'CONNECTED'
         jobmgr.curJob = None
         jobmgr.reservedNodes = []
