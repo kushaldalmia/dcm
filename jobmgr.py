@@ -47,7 +47,6 @@ class jobManager:
         for i in range(0, job.numNodes):
             self.unScheduledQueue.put(i)
         self.curJob = job
-        self.status = 'JOBSCHED'
         t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
         t.start()
         self.status = 'JOBEXEC'
@@ -81,6 +80,7 @@ def scheduleJob(jobmgr, job):
         if node == 'FAILURE':
             print "Job Execution Failed"
             # Send RES_RELEASE to all nodes in reservedNodes
+            jobmgr.nwmgr.releaseNodes()
             jobmgr.curJob = None
             return
         t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, chunkindex, node, jobmgr.unScheduledQueue,))

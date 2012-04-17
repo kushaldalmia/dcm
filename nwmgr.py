@@ -73,6 +73,13 @@ def handleTimeout(manager, node):
         remove_node(manager.localIP, manager.port, node.split(":")[0],
                     node.split(":")[1], manager.config['serverip'] + ':' +
                     manager.config['serverport'])
+        #TODO: Move to new function
+        if node in manager.freeNodes:
+                manager.freeNodes.remove(node)
+        if manager.jobmgr.status == 'JOBEXEC':
+            if node in manager.jobmgr.reservedNodes and manager.jobmgr.reservedNodes[node] >= 0:
+                    manager.jobmgr.unScheduledQueue.put(manager.jobmgr.reservedNodes[node])
+                    del manager.jobmgr.reservedNodes[node]
     else:
         print "No Heartbeat from neighbor " + node + "!"
         timer = threading.Timer(int(manager.config['alivetimeout']), handleTimeout, args=(manager, node,))
@@ -192,10 +199,7 @@ class nwManager:
         elif msg.type == "RES_UNAVL":
             if msg.data in self.freeNodes:
                 self.freeNodes.remove(msg.data)
-            if self.jobmgr.status == 'RESERVED' and self.jobmgr.reservedBy == msg.data:
-                self.jobmgr.status = 'AVAILABLE'
-                self.jobmgr.reservedBy = None
-            elif self.jobmgr.status == 'JOBSCHED' or self.jobmgr.status == 'JOBEXEC':
+            if self.jobmgr.status == 'JOBEXEC':
                 if msg.data in self.jobmgr.reservedNodes and self.jobmgr.reservedNodes[msg.data] >= 0:
                     self.jobmgr.unScheduledQueue.put(self.jobmgr.reservedNodes[msg.data])
                     del self.jobmgr.reservedNodes[msg.data]
@@ -248,7 +252,6 @@ class nwManager:
             self.lock.release()
             if chunkindex == -1:
                 return False
-            # Handle case for non-existent chunk index
             self.handleJobResponse(msg, chunkindex, client)
             return False
 
@@ -451,7 +454,21 @@ class nwManager:
         except:
             print "Failure during getting job response! Rescheduling Chunk " + chunkindex
             self.jobmgr.unScheduledQueue.put(chunkindex)
-
+    
+    def releaseNodes(self):
+        self.lock.acquire()
+        relMsg = self.createNewMessage("RELEASE_REQ","")
+        for node in self.jobmgr.reservedNodes:
+            if self.jobmgr.reservedNodes[node] >= 0:
+                try:
+                    sock = createConn(node)
+                    sock.send(relMsg)
+                    sock.close()
+                except:
+                    pass
+        self.jobmgr.reservedNodes = {}
+        self.lock.release()
+                
 # Helper Routines
 def createConn(n):
     sock = socket(AF_INET, SOCK_STREAM)
