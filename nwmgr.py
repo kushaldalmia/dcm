@@ -227,8 +227,6 @@ class nwManager:
             return False
 
         elif msg.type == "RELEASE_REQ":
-            if self.jobmgr.status == 'RESERVED':
-                self.jobmgr.status = 'AVAILABLE'
             client.close()
             self.lock.release()
             return False
