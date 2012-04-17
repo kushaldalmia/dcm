@@ -362,8 +362,7 @@ class nwManager:
                 unScheduledQueue.put(chunkindex)
                 return
 
-            chuinkFile = os.path.join(self.jobmgr.jobdir, 'chunk' +
-            str(chhunkindex))
+            chuinkFile = os.path.join(self.jobmgr.jobDir, 'chunk' + str(chunkindex))
             dataSize = os.stat(chunkFile).st_size
             dataMsg = self.createNewMessage("JOB_DATA", str(dataSize))
             sock.send(dataMsg)
@@ -371,7 +370,7 @@ class nwManager:
                 unScheduledQueue.put(chunkindex)
                 return
             
-            self.sendFile(sock, chunkFile))
+            self.sendFile(sock, chunkFile)
             if self.waitForMsg(sock,'ACK') == False:
                 unScheduledQueue.put(chunkindex)
                 return
@@ -446,8 +445,7 @@ class nwManager:
             opsize = int(msg.data)
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
-            resultFile = os.path.join(self.jobmgr.jobDir, 'result' +
-            str(chunkindex) + '.txt')
+            resultFile = os.path.join(self.jobmgr.jobDir, 'result' + str(chunkindex) + '.txt')
             self.recvFile(sock, resultFile, opsize)
             sock.send(ackMsg)
             sock.close()

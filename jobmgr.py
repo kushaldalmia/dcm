@@ -1,6 +1,7 @@
 import json
 import requests
 import sys
+import shutil
 import os
 import math
 import time
@@ -97,8 +98,7 @@ def splitJob(jobmgr, job):
 
     # move chunk files to temp folder
     for index in range(0, job.numNodes):
-        shutil.move('chunk' + str(index), os.path.join(jobmgr.jobDir, 'chunk'
-        + str(index))
+        shutil.move('chunk' + str(index), os.path.join(jobmgr.jobDir, 'chunk' + str(index)))
 
 def executeJob(jobmgr):
     try:
