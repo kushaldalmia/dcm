@@ -187,20 +187,21 @@ class nwManager:
             msg.ttl -= 1
             if msg.ttl != 0:
                 newMsg = self.createNewMessage(msg.type, msg.data, msg.ttl)
-                # Handle Resource Unavailable Message
                 self.sendExceptSource(newMsg, msg.src)
 
         elif msg.type == "RES_UNAVL":
-            # TODO: Handle case when node was running job; Reschedule Job
             if msg.data in self.freeNodes:
                 self.freeNodes.remove(msg.data)
             if self.jobmgr.status == 'RESERVED' and self.jobmgr.reservedBy == msg.data:
                 self.jobmgr.status = 'AVAILABLE'
                 self.jobmgr.reservedBy = None
+            elif self.jobmgr.status == 'JOBSCHED' or self.jobmgr.status == 'JOBEXEC':
+                if msg.data in self.jobmgr.reservedNodes and self.jobmgr.reservedNodes[msg.data] >= 0:
+                    self.jobmgr.unScheduledQueue.put(self.jobmgr.reservedNodes[msg.data])
+                    del self.jobmgr.reservedNodes[msg.data]
             msg.ttl -= 1
             if msg.ttl != 0:
                 newMsg = self.createNewMessage(msg.type, msg.data, msg.ttl)
-                # Handle Resource Unavailable Message
                 self.sendExceptSource(newMsg, msg.src)
 
         elif msg.type == "RESERVE_REQ":
