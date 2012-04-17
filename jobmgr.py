@@ -6,6 +6,7 @@ import math
 import time
 import Queue
 import subprocess
+import tempfile
 from message import *
 from socket import *
 import SocketServer
@@ -24,6 +25,7 @@ class jobManager:
         self.reservedNodes = {}
         self.chunkStatus = Queue.Queue(maxsize=0)
         self.unScheduledQueue = Queue.Queue(maxsize=0)
+        self.jobDir = tempfile.mkdtemp()
     
     def makeAvailable(self):
         self.status = 'AVAILABLE'
@@ -64,7 +66,7 @@ class jobManager:
         self.curJob = None
         
 def scheduleJob(jobmgr, job):
-    splitJob(job)
+    splitJob(jobmgr, job)
     
     jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
     jobmgr.jobTimer.start()
@@ -87,11 +89,16 @@ def scheduleJob(jobmgr, job):
     
     return
 
-def splitJob(job):
+def splitJob(jobmgr, job):
     numLines = sum(1 for line in open(job.ipFile))
     lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
     cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
     os.system(cmd)
+
+    # move chunk files to temp folder
+    for index in range(0, job.numNodes):
+        shutil.move('chunk' + str(index), os.path.join(jobmgr.jobDir, 'chunk'
+        + str(index))
 
 def executeJob(jobmgr):
     try:

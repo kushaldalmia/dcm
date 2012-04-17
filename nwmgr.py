@@ -115,7 +115,6 @@ class nwManager:
         self.ttl = self.config['ttl']
         self.destroy = False
         self.jobmgr = jobmgr
-        self.tempdir = tempfile.mkdtemp()
 
     def startManager(self):
         curTime = time.time()
@@ -363,14 +362,16 @@ class nwManager:
                 unScheduledQueue.put(chunkindex)
                 return
 
-            dataSize = os.stat("chunk" + str(chunkindex)).st_size
+            chuinkFile = os.path.join(self.jobmgr.jobdir, 'chunk' +
+            str(chhunkindex))
+            dataSize = os.stat(chunkFile).st_size
             dataMsg = self.createNewMessage("JOB_DATA", str(dataSize))
             sock.send(dataMsg)
             if self.waitForMsg(sock,'ACK') == False:
                 unScheduledQueue.put(chunkindex)
                 return
             
-            self.sendFile(sock, "chunk" + str(chunkindex))
+            self.sendFile(sock, chunkFile))
             if self.waitForMsg(sock,'ACK') == False:
                 unScheduledQueue.put(chunkindex)
                 return
@@ -392,9 +393,9 @@ class nwManager:
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
             codeSize = int(msg.data)
-            codeFile = os.path.join(self.tempdir, "script.py")
-            dataFile = os.path.join(self.tempdir, "data.txt")
-            opFile = os.path.join(self.tempdir, "op.txt")
+            codeFile = os.path.join(self.jobmgr.jobDir, "script.py")
+            dataFile = os.path.join(self.jobmgr.jobDir, "data.txt")
+            opFile = os.path.join(self.jobmgr.jobDir, "op.txt")
             print codeFile
             self.recvFile(sock, codeFile, codeSize)
             os.chmod(codeFile, 0777)
@@ -445,7 +446,9 @@ class nwManager:
             opsize = int(msg.data)
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
-            self.recvFile(sock, "result" + str(chunkindex) + ".txt", opsize)
+            resultFile = os.path.join(self.jobmgr.jobDir, 'result' +
+            str(chunkindex) + '.txt')
+            self.recvFile(sock, resultFile, opsize)
             sock.send(ackMsg)
             sock.close()
             self.jobmgr.chunkStatus.put(chunkindex)
