@@ -79,7 +79,6 @@ def scheduleJob(jobmgr, job):
         node = jobmgr.nwmgr.reserveNode()
         if node == 'FAILURE':
             print "Job Execution Failed"
-            # Send RES_RELEASE to all nodes in reservedNodes
             jobmgr.nwmgr.releaseNodes()
             jobmgr.curJob = None
             return
@@ -100,17 +99,15 @@ def executeJob(jobmgr):
         ipObj = open(job.ipFile, 'r')
         opObj = open(job.opFile, 'w')
         print "executing job starting at " + str(time.time())
-        p = subprocess.Popen([sys.executable, job.srcFile], stdin=ipObj, stdout=opObj)
+        p = subprocess.Popen([sys.executable, job.srcFile], stdin=ipObj, stdout=opObj, stderr=opObj)
         p.wait()
         print "job execution finished at " + str(time.time())
-        # Check returncode for p; Send error to owner
-        ipObj.close()
-        opObj.close()
-        jobmgr.completeJob()
     except:
-        # Send error to owner
-        jobmgr.status = 'AVAILABLE'
-
+        opObj.write("Job Execution Caused Exception!")
+    ipObj.close()
+    opObj.close()
+    jobmgr.completeJob()
+    
 def handleJobTimeout(jobmgr):
     if jobmgr.curJob == None:
         return
