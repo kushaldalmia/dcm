@@ -46,9 +46,12 @@ def unavailable():
 
 @app.route('/addjob', methods=['GET'])
 def addjob():
+	mergeResults = False
+	if request.args.get('merge','') == "True":
+		mergeResults = True
 	global mgr
 	job = Job(request.args.get('ipfile', ''), request.args.get('srcfile', ''), 
-		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')))
+		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')), mergeResults)
 	mgr.addJob(job)
 	return render_template('home.html', status="unavailable")
 
