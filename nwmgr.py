@@ -36,6 +36,8 @@ def connHandler(manager, client):
 def acceptConn(manager, server):
     manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
     manager.hbtTimer.start()
+    manager.updateTimer = threading.Timer(int(manager.config['updatetimeout']), sendUpdates, args=(manager,))
+    manager.updateTimer.start()
     while True:
         try:
             client, addr = server.accept()
@@ -45,12 +47,20 @@ def acceptConn(manager, server):
             if manager.destroy == True:
                 return
 
-def sendHeartBeats(manager):
+def sendUpdates(manager):
     manager.lock.acquire()
     freeList = ""
     for node in manager.freeNodes:
         freeList += (node + ",")
-    hbtMsg = manager.createNewMessage("HEARTBEAT", freeList)
+    updateMsg = manager.createNewMessage("UPDATE", freeList)
+    manager.sendToNeighbors(updateMsg)
+    manager.lock.release()
+    manager.updateTimer = threading.Timer(int(manager.config['updatetimeout']), sendUpdates, args=(manager,))
+    manager.updateTimer.start()
+
+def sendHeartBeats(manager):
+    manager.lock.acquire()
+    hbtMsg = manager.createNewMessage("HEARTBEAT", "")
     manager.sendToNeighbors(hbtMsg)
     manager.lock.release()
     manager.hbtTimer = threading.Timer(int(manager.config['heartbeattimeout']), sendHeartBeats, args=(manager,))
@@ -178,14 +188,16 @@ class nwManager:
         elif msg.type == "HEARTBEAT":
             aliveTimer, count = self.neighbors[msg.src]
             aliveTimer.cancel()
+            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.src,))
+            aliveTimer.start()
+            self.neighbors[msg.src] = (aliveTimer, 0)
+
+        elif msg.type == "UPDATE":
             if len(msg.data) > 0:
                 freeList = msg.data.split(",")
                 for node in freeList:
                     if len(node) > 0 and len(node) < 22 and node not in self.freeNodes:
                         self.freeNodes.append(node)
-            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, msg.src,))
-            aliveTimer.start()
-            self.neighbors[msg.src] = (aliveTimer, 0)
 
         elif msg.type == "RES_AVL":
             if msg.data not in self.freeNodes:
