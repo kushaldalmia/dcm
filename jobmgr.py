@@ -77,6 +77,7 @@ def scheduleJob(jobmgr, job):
         print "Scheduling chunk index " + str(chunkindex)
         if chunkindex == -1:
             print "Job Completed"
+            mergeResults(jobmgr, job)
             jobmgr.curJob = None
             return
         node = jobmgr.nwmgr.reserveNode()
@@ -89,6 +90,21 @@ def scheduleJob(jobmgr, job):
         t.start()
     
     return
+
+def mergeResults(jobmgr, job):
+    if job.mergeResults == True:
+        # merge all the files into one result file
+        resultFile = os.path.join(job.opFile, 'result.txt')
+        for index in range(0, job.numNodes):
+            chunkResultFile = os.path.join(jobmgr.jobDir, 'result' + str(index) + '.txt')
+            cmd = 'cat ' + chunkResultFile + ' >> ' + resultFile
+            os.system(cmd)
+    else:
+        # move all the files to output folder
+        for index in range(0, job.numNodes):
+            srcFile = os.path.join(jobmgr.jobDir, 'result' + str(index) + '.txt')
+            dstFile = os.path.join(job.opFile, 'result' + str(index) + '.txt')
+            shutil.move(srcFile, dstFile)
 
 def splitJob(jobmgr, job):
     numLines = sum(1 for line in open(job.ipFile))
