@@ -362,7 +362,7 @@ class nwManager:
                 unScheduledQueue.put(chunkindex)
                 return
 
-            chuinkFile = os.path.join(self.jobmgr.jobDir, 'chunk' + str(chunkindex))
+            chunkFile = os.path.join(self.jobmgr.jobDir, 'chunk' + str(chunkindex))
             dataSize = os.stat(chunkFile).st_size
             dataMsg = self.createNewMessage("JOB_DATA", str(dataSize))
             sock.send(dataMsg)
