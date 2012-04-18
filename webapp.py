@@ -49,6 +49,14 @@ def addjob():
 	mergeResults = False
 	if request.args.get('merge','') == "True":
 		mergeResults = True
+	if os.path.isfile(request.args.get('ipfile', '')) == False:
+		return render_template('home.html', status="unavailable")
+	if os.path.isfile(request.args.get('srcfile', '')) == False:
+		return render_template('home.html', status="unavailable")
+	if os.path.exists(request.args.get('opfile', '')) == False:
+		return render_template('home.html', status="unavailable")
+	if int(request.args.get('numnodes','0')) <= 0:
+		return render_template('home.html', status="unavailable")
 	global mgr
 	job = Job(request.args.get('ipfile', ''), request.args.get('srcfile', ''), 
 		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')), mergeResults)

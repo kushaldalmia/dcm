@@ -492,7 +492,10 @@ def register_node(localIP, localPort, server):
     return neighbor_list
 
 def remove_node(localIP, localPort, nodeIP, nodePort, server):
-    data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort));
+    try:
+        data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort))
+    except:
+        pass
 
 def ConfigSectionMap(config, section):
     dict1 = {}
