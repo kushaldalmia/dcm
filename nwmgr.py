@@ -438,23 +438,29 @@ class nwManager:
         try:
             sock = createConn(job.owner)
             opsize = os.stat(job.opFile).st_size
-            opMsg = self.createNewMessage("JOB_COMPLETE", str(opsize))
+            opMsg = self.createNewMessage("JOB_COMPLETE", str(opsize) + ":" + str(job.cost))
             sock.send(opMsg)
             if self.waitForMsg(sock,'ACK') == False:
+                self.jobmgr.accountBalance += job.timeout
                 return
             self.sendFile(sock, job.opFile)
             self.waitForMsg(sock,'ACK')
             sock.close()
+            print "Incrementing account balance by: " + str(job.cost)
+            self.jobmgr.accountBalance += job.cost
             return
-        except:
+        except Exception, e:
             print "Exception in sendResponse: %s" % e
+            print "Incrementing account balance by: " + job.cost
+            self.jobmgr.accountBalance += job.timeout
             traceback.print_exc()
             sock.close()
             return
             
     def handleJobResponse(self, msg, chunkindex, sock):
         try:
-            opsize = int(msg.data)
+            data = msg.data.split(":")
+            opsize = int(data[0])
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
             resultFile = os.path.join(self.jobmgr.jobDir, 'result' + str(chunkindex) + '.txt')
@@ -462,8 +468,10 @@ class nwManager:
             sock.send(ackMsg)
             sock.close()
             self.jobmgr.chunkStatus.put(chunkindex)
+            self.jobmgr.curJob.cost -= int(data[1])
+            print "Decrementing account balance by: " + data[1]
         except:
-            print "Failure during getting job response! Rescheduling Chunk " + chunkindex
+            print "Failure during getting job response! Rescheduling Chunk " + str(chunkindex)
             self.jobmgr.unScheduledQueue.put(chunkindex)
     
     def releaseNodes(self):

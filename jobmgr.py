@@ -27,6 +27,7 @@ class jobManager:
         self.chunkStatus = Queue.Queue(maxsize=0)
         self.unScheduledQueue = Queue.Queue(maxsize=0)
         self.jobDir = tempfile.mkdtemp()
+        self.accountBalance = 0
     
     def makeAvailable(self):
         self.status = 'AVAILABLE'
@@ -50,6 +51,7 @@ class jobManager:
         for i in range(0, job.numNodes):
             self.unScheduledQueue.put(i)
         self.curJob = job
+        self.accountBalance -= (job.numNodes * job.timeout)
         t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
         t.start()
         self.status = 'JOBEXEC'
@@ -84,6 +86,7 @@ def scheduleJob(jobmgr, job):
         if node == 'FAILURE':
             print "Job Execution Failed"
             jobmgr.nwmgr.releaseNodes()
+            jobmgr.accountBalance += (job.numNodes * job.timeout)
             jobmgr.curJob = None
             return
         t = threading.Thread(target=jobmgr.nwmgr.scheduleJob, args=(job, chunkindex, node, jobmgr.unScheduledQueue,))
@@ -126,10 +129,10 @@ def executeJob(jobmgr):
         job = jobmgr.curJob
         ipObj = open(job.ipFile, 'r')
         opObj = open(job.opFile, 'w')
-        print "executing job starting at " + str(time.time())
+        startTime = time.time()
         p = subprocess.Popen([sys.executable, job.srcFile], stdin=ipObj, stdout=opObj, stderr=opObj)
         p.wait()
-        print "job execution finished at " + str(time.time())
+        job.cost = int(ceil(time.time() - startTime))
     except:
         opObj.write("Job Execution Caused Exception!")
     ipObj.close()
@@ -143,6 +146,8 @@ def handleJobTimeout(jobmgr):
     if jobmgr.chunkStatus.qsize() == jobmgr.curJob.numNodes:
         jobmgr.unScheduledQueue.put(-1)
         jobmgr.chunkStatus = Queue.Queue(maxsize=0)
+        jobmgr.accountBalance += jobmgr.curJob.cost
+        print "Final account balance is: " + str(jobmgr.accountBalance)
         print "Added chunkindex -1 to unsched Queue"
     else:
         jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))

@@ -44,26 +44,28 @@ def unavailable():
 	mgr.makeUnavailable()
 	return render_template('home.html', status="unavailable")
 
-@app.route('/addjob', methods=['GET'])
+@app.route('/addjob', methods=['POST'])
 def addjob():
 	mergeResults = False
-	if request.args.get('merge','') == "True":
+	if request.form['merge'] == "True":
 		mergeResults = True
 	splitByLine = True
-	if request.args.get('splitoption','') == "Bytes":
+	if request.form['splitoption'] == "Bytes":
 		splitByLine = False
-	if os.path.isfile(request.args.get('ipfile', '')) == False:
+	if os.path.isfile(request.form['ipfile']) == False:
 		return render_template('home.html', status="unavailable")
-	if os.path.isfile(request.args.get('srcfile', '')) == False:
+	if os.path.isfile(request.form['srcfile']) == False:
 		return render_template('home.html', status="unavailable")
-	if os.path.exists(request.args.get('opfile', '')) == False:
+	if os.path.exists(request.form['opfile']) == False:
 		return render_template('home.html', status="unavailable")
-	if int(request.args.get('numnodes','0')) <= 0:
+	if int(request.form['numnodes']) <= 0:
+		return render_template('home.html', status="unavailable")
+	if int(request.form['timeout']) <= 0:
 		return render_template('home.html', status="unavailable")
 	global mgr
-	job = Job(request.args.get('ipfile', ''), request.args.get('srcfile', ''), 
-		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')), 
-		  mergeResults, splitByLine)
+	job = Job(request.form['ipfile'], request.form['srcfile'], 
+		  request.form['opfile'], int(request.form['numnodes']), 
+		  mergeResults, splitByLine, int(request.form['timeout']))
 	mgr.addJob(job)
 	return render_template('home.html', status="unavailable")
 

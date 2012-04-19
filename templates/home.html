@@ -20,7 +20,7 @@
       <dd><input type=submit value="Available">
     </dl>
   </form>
-  <form action="{{ url_for('addjob') }}" method=get>
+  <form action="{{ url_for('addjob') }}" method=post>
     <table>
       <tr>
 	<td>Input File</td>
@@ -37,6 +37,10 @@
       <tr>
 	<td>Nodes</td>
 	<td><input type="text" name="numnodes" /></td>
+      </tr>
+      <tr>
+	<td>Job Timeout</td>
+	<td><input type="text" name="timeout" /></td>
       </tr>
       <tr>
 	<td><input type="radio" name="splitoption" value="Line"/> Line Splitting</td>
