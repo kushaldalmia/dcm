@@ -79,13 +79,13 @@ def register(ip_add=None, port_no=None):
 		except Exception, e:
 			print "Failed to add node " + node_id + " to Database!"
 			print "Exception: %s" % e
-			return json.dumps("SERVER_ERROR")
+			return json.dumps("SERVER_FAILURE")
 			
 	else:
 		# Now we know that this node was already registered 
 		print "ERROR: Node " + node_id + " already existing in DB!"
 		return json.dumps("ALREADY_CONNECTED")
-	return json.dumps("SERVER_ERROR")
+	return json.dumps("SERVER_FAILURE")
 	
 @app.route("/unregister/<remote_ip>/<remote_port>/<ip_add>/<port_no>/")
 def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
