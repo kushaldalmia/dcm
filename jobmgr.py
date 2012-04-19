@@ -52,6 +52,7 @@ class jobManager:
             self.unScheduledQueue.put(i)
         self.curJob = job
         self.accountBalance -= (job.numNodes * job.timeout)
+        print "Addjob: Current balance: " + str(self.accountBalance)
         t = threading.Thread(target=scheduleJob, args=(self, self.curJob,))
         t.start()
         self.status = 'JOBEXEC'
@@ -132,8 +133,11 @@ def executeJob(jobmgr):
         startTime = time.time()
         p = subprocess.Popen([sys.executable, job.srcFile], stdin=ipObj, stdout=opObj, stderr=opObj)
         p.wait()
-        job.cost = int(ceil(time.time() - startTime))
-    except:
+        job.cost = int(math.ceil(float(time.time() - startTime)))
+    except Exception, e:
+        print "Exception in executeJob: %s" % e
+        traceback.print_exc()
+        job.cost = job.timeout
         opObj.write("Job Execution Caused Exception!")
     ipObj.close()
     opObj.close()
