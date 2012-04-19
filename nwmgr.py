@@ -503,11 +503,7 @@ def getLocalIP():
 
 def register_node(localIP, localPort, server):
     data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort))
-    ip_list = json.loads(data.text)
-    ip_list = ip_list[1:]
-    neighbor_list = []
-    for info in ip_list:
-        neighbor_list.append(str(info['ip_add']) + ":" + str(info['port']))
+    neighbor_list = json.loads(data.text)
     return neighbor_list
 
 def remove_node(localIP, localPort, nodeIP, nodePort, server):
