@@ -68,11 +68,10 @@ def sendHeartBeats(manager):
 
 def handleTimeout(manager, node):
     manager.lock.acquire()
-    timer, count = manager.neighbors[node]
-    if manager.destroy == True:
+    if manager.destroy == True or node not in manager.neighbors:
         manager.lock.release()
         return
-
+    timer, count = manager.neighbors[node]
     if count > int(manager.config['retrycount']):
         print "Sending RES_UNAVL for node " + node + "!"
         manager.conn[node].close()
