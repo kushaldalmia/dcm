@@ -49,6 +49,9 @@ def addjob():
 	mergeResults = False
 	if request.args.get('merge','') == "True":
 		mergeResults = True
+	splitByLine = True
+	if request.args.get('splitoption','') == "Bytes":
+		splitByLine = False
 	if os.path.isfile(request.args.get('ipfile', '')) == False:
 		return render_template('home.html', status="unavailable")
 	if os.path.isfile(request.args.get('srcfile', '')) == False:
@@ -59,7 +62,8 @@ def addjob():
 		return render_template('home.html', status="unavailable")
 	global mgr
 	job = Job(request.args.get('ipfile', ''), request.args.get('srcfile', ''), 
-		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')), mergeResults)
+		  request.args.get('opfile', ''), int(request.args.get('numnodes', '0')), 
+		  mergeResults, splitByLine)
 	mgr.addJob(job)
 	return render_template('home.html', status="unavailable")
 

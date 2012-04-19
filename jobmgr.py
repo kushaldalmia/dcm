@@ -107,9 +107,14 @@ def mergeResults(jobmgr, job):
             shutil.move(srcFile, dstFile)
 
 def splitJob(jobmgr, job):
-    numLines = sum(1 for line in open(job.ipFile))
-    lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
-    cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
+    if job.splitByLine == True:
+        numLines = sum(1 for line in open(job.ipFile))
+        lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
+        cmd = "split -a 1 -l " + str(lpf) + " -d " + job.ipFile + " chunk"
+    else:
+        filesize = os.stat(job.ipFile).st_size
+        bpf = int(math.ceil(float(filesize)/float(job.numNodes)))
+        cmd = "split -a 1 -b " + str(bpf) + " -d " + job.ipFile + " chunk"
     os.system(cmd)
 
     # move chunk files to temp folder
