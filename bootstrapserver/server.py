@@ -92,6 +92,7 @@ def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 	failed_node_id = ip_add.strip() + ":" + port_no.strip()
 	neighbor_node_id = remote_ip.strip() + ":" + remote_port.strip()
 	
+	updatedRefCount = -1
 	id_list = query_db('select node_id from Nodes where node_id=?',[failed_node_id])
 	if len(id_list) > 0:
 		try:
@@ -103,14 +104,33 @@ def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 	try:
 		neighbor_data = query_db('select * from Nodes where node_id=?', [neighbor_node_id]) 
 		if neighbor_data == []:
-			return json.dumps("SERVER_SUCCESS")
+			return json.dumps("SERVER_FAILURE")
 		else:
-			g.db.execute('update Nodes set ref_count=? where node_id=?',[neighbor_data[0]['ref_count'] - 1, neighbor_node_id])
+			updatedRefCount = neighbor_data[0]['ref_count'] - 1
+			g.db.execute('update Nodes set ref_count=? where node_id=?',[updatedRefCount, neighbor_node_id])
 			g.db.commit()
-			return json.dumps("SERVER_SUCCESS")
 	except Exception, e:
 		print "Exception: %s" % e
 		return json.dumps("SERVER_FAILURE")
+	newNeighbor = ""
+	if updatedRefCount != -1 and updatedRefCount < MAX_PEERS:
+		try:
+			nodes_entries = query_db('SELECT * FROM Nodes ORDER BY ref_count')
+			newNeighbor = ""
+			for node in nodes_entries:
+				if node['node_id'] != neighbor_node_id:
+					newNeighbor = node['node_id']
+					break
+			if newNeighbor == "":
+				return json.dumps("")
+			g.db.execute('update Nodes set ref_count=? where node_id=?',[updatedRefCount + 1, neighbor_node_id])
+                        g.db.commit()
+			g.db.execute('update Nodes set ref_count=? where node_id=?',[nodes_entries[0]['ref_count'] + 1, newNeighbor])
+                        g.db.commit()
+			print "Successfully returned new neighbor " + newNeighbor + " for node: " + neighbor_node_id
+		except:
+			return json.dumps("SERVER_FAILURE")
+	return json.dumps(newNeighbor)
 
 if __name__== "__main__":
         init_db()
