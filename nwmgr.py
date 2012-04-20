@@ -79,12 +79,16 @@ def handleTimeout(manager, node):
         del manager.conn[node]
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
-        remove_node(manager.localIP, manager.port, node.split(":")[0],
-                    node.split(":")[1], manager.config['serverip'] + ':' +
-                    manager.config['serverport'])
+        result = remove_node(manager.localIP, manager.port, node.split(":")[0],
+                             node.split(":")[1], manager.config['serverip'] + ':' +
+                             manager.config['serverport'])
+
+        if result != '':
+            manager.sendNeighborInitMsg(result)
+
         #TODO: Move to new function
         if node in manager.freeNodes:
-                manager.freeNodes.remove(node)
+            manager.freeNodes.remove(node)
         if manager.jobmgr.status == 'JOBEXEC':
             if node in manager.jobmgr.reservedNodes and manager.jobmgr.reservedNodes[node] >= 0:
                     manager.jobmgr.unScheduledQueue.put(manager.jobmgr.reservedNodes[node])
@@ -147,6 +151,21 @@ class nwManager:
         self.lock.release()
         self.server.close()
         self.destroy = True
+
+    def sendNeighborInitMsg(self, node):
+        try:
+            if node in self.neighbors:
+                return
+            self.conn[node] = createConn(node)
+            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, node,))
+            aliveTimer.start()
+            self.neighbors[node] = (aliveTimer,0)
+            t = threading.Thread(target=connHandler, args=(self, self.conn[node],))
+            t.start()
+            initMsg = self.createNewMessage("NEIGHBOR_INIT", self.localNodeId)
+            self.conn[node].send(initMsg)
+        except:
+            pass
 
     def sendToNeighbors(self, msg):
         for key in self.conn:
@@ -509,6 +528,7 @@ def register_node(localIP, localPort, server):
 def remove_node(localIP, localPort, nodeIP, nodePort, server):
     try:
         data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort))
+        return json.loads(data.text)
     except:
         pass
 

@@ -21,7 +21,6 @@ def connect():
 	nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
 	serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
 	neighbor_list = register_node(getLocalIP(), port, serverAddr)
-	print neighbor_list
 	if neighbor_list == 'ALREADY_CONNECTED':
 		return render_template('home.html', status="unavailable")
 	if neighbor_list == 'SERVER_FAILURE':
