@@ -286,7 +286,7 @@ class nwManager:
         elif msg.type == "CPU_REQUEST":
             respMsg = ""
             if self.jobmgr.status == 'AVAILABLE':
-                respMsg = self.createNewMessage('ACK', str(psutil.cpu_percent(interval=0.1)))
+                respMsg = self.createNewMessage('ACK', str(psutil.cpu_percent(interval=1)))
             else:
                 respMsg = self.createNewMessage('NACK','')
             try:
@@ -544,7 +544,8 @@ class nwManager:
                         break
             except:
                 pass
-        sortedList = sorted(curCPU, key=curCPU.get, reverse=True)
+        print curCPU
+        sortedList = sorted(curCPU, key=curCPU.get)
         self.lock.acquire()
         self.freeNodes = sortedList[:]
         for node in freeList:
