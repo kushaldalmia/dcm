@@ -9,6 +9,7 @@ from socket import *
 import SocketServer
 import threading
 import ConfigParser
+import psutil
 from sendfile import sendfile
 from job import *
 
@@ -282,6 +283,20 @@ class nwManager:
             self.handleJobResponse(msg, chunkindex, client)
             return False
 
+        elif msg.type == "CPU_REQUEST":
+            respMsg = ""
+            if self.jobmgr.status == 'AVAILABLE':
+                respMsg = self.createNewMessage('ACK', str(psutil.cpu_percent(interval=0.1)))
+            else:
+                respMsg = self.createNewMessage('NACK','')
+            try:
+                client.send(respMsg)
+                client.close()
+            except:
+                pass
+            self.lock.release()
+            return False
+
         self.lock.release()
         return True
 
@@ -505,6 +520,39 @@ class nwManager:
                     pass
         self.jobmgr.reservedNodes = {}
         self.lock.release()
+    
+    def getCPUInfo(self, numNodes):
+        self.lock.acquire()
+        freeList = self.freeNodes[:]
+        print freeList
+        self.lock.release()
+        curCPU = {}
+        count = 0
+        cpureqMsg = self.createNewMessage('CPU_REQUEST','')
+        for node in freeList:
+            try:
+                sock = createConn(node)
+                sock.send(cpureqMsg)
+                sock.settimeout(3.0)
+                data = recvMessage(sock)
+                msg = Message(data)
+                sock.close()
+                if msg.type == 'ACK':
+                    curCPU[node] = float(msg.data)
+                    count += 1
+                    if count == (numNodes * 2):
+                        break
+            except:
+                pass
+        sortedList = sorted(curCPU, key=curCPU.get, reverse=True)
+        self.lock.acquire()
+        self.freeNodes = sortedList[:]
+        for node in freeList:
+            if node not in curCPU:
+                self.freeNodes.append(node)
+        print self.freeNodes
+        self.lock.release()
+            
                 
 # Helper Routines
 def createConn(n):

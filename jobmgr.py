@@ -70,8 +70,9 @@ class jobManager:
         self.curJob = None
         
 def scheduleJob(jobmgr, job):
-    splitJob(jobmgr, job)
     
+    jobmgr.nwmgr.getCPUInfo(job.numNodes)
+    splitJob(jobmgr, job)
     jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
     jobmgr.jobTimer.start()
 
@@ -111,6 +112,7 @@ def mergeResults(jobmgr, job):
             shutil.move(srcFile, dstFile)
 
 def splitJob(jobmgr, job):
+    
     if job.splitByLine == True:
         numLines = sum(1 for line in open(job.ipFile))
         lpf = int(math.ceil(float(numLines)/float(job.numNodes)))
