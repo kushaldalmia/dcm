@@ -8,6 +8,7 @@ import time
 import Queue
 import subprocess
 import tempfile
+import resource
 from message import *
 from socket import *
 import SocketServer
@@ -127,14 +128,25 @@ def splitJob(jobmgr, job):
     for index in range(0, job.numNodes):
         shutil.move('chunk' + str(index), os.path.join(jobmgr.jobDir, 'chunk' + str(index)))
 
+def setProcessLimits():
+    # Read the config file
+    config = ConfigParser.ConfigParser()
+    config.read('config.cfg')
+    sandboxingConfig = ConfigSectionMap(config, "SandboxingParams")
+
+    resource.setrlimit(resource.RLIMIT_NOFILE, (sanboxingConfig['nfile'], hard))
+    resource.setrlimit(resource.RLIMIT_NPROC, (sanboxingConfig['nproc'], hard))
+    resource.setrlimit(resource.RLIMIT_STACK, (sanboxingConfig['stacksize'], hard))
+
 def executeJob(jobmgr):
     try:
         job = jobmgr.curJob
         ipObj = open(job.ipFile, 'r')
         opObj = open(job.opFile, 'w')
         startTime = time.time()
-        p = subprocess.Popen([sys.executable, job.srcFile], stdin=ipObj, stdout=opObj, stderr=opObj)
-        p.wait()
+        p = psutil.Popen([sys.executable, job.srcFile], preexec_fn=setProcessLimits,
+                             stdin=ipObj, stdout=opObj, stderr=opObj)
+        p.wait(timeout=job.timeout)
         job.cost = int(math.ceil(float(time.time() - startTime)))
     except Exception, e:
         print "Exception in executeJob: %s" % e
