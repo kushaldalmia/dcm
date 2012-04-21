@@ -290,7 +290,7 @@ class nwManager:
                 maxSpeed = 0.0
                 for info in cpu.info:
                     maxSpeed += float(info['cpu MHz'])
-                curSpeed = maxSpeed * (1.0 - psutil.cpu_percent(interval=1))
+                curSpeed = maxSpeed * (100.0 - psutil.cpu_percent(interval=1))
                 print 'Current Idle CPU Speed is: ' + str(curSpeed)
                 respMsg = self.createNewMessage('ACK', str(curSpeed))
             else:

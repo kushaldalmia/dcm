@@ -155,6 +155,7 @@ def executeJob(jobmgr):
     except Exception, e:
         print "Exception in executeJob: %s" % e
         traceback.print_exc()
+        p.kill()
         job.cost = job.timeout
         opObj.write("Job Execution Caused Exception!")
     ipObj.close()
