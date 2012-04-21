@@ -3,6 +3,7 @@ import requests
 import sys
 import os
 import time
+from cpuinfo import *
 import traceback,tempfile
 from message import *
 from socket import *
@@ -286,8 +287,12 @@ class nwManager:
         elif msg.type == "CPU_REQUEST":
             respMsg = ""
             if self.jobmgr.status == 'AVAILABLE':
-                
-                respMsg = self.createNewMessage('ACK', str(psutil.cpu_percent(interval=1)))
+                maxSpeed = 0.0
+                for info in cpu.info:
+                    maxSpeed += info['cpu MHz']
+                curSpeed = maxSpeed * psutil.cpu_percent(interval=1)
+                print 'Current CPU Speed is: ' + str(curSpeed)
+                respMsg = self.createNewMessage('ACK', str(curSpeed))
             else:
                 respMsg = self.createNewMessage('NACK','')
             try:
