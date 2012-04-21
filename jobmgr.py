@@ -101,6 +101,7 @@ def mergeResults(jobmgr, job):
     if job.mergeResults == True:
         # merge all the files into one result file
         resultFile = os.path.join(job.opFile, 'result.txt')
+        os.remove(resultFile)
         for index in range(0, job.numNodes):
             chunkResultFile = os.path.join(jobmgr.jobDir, 'result' + str(index) + '.txt')
             cmd = 'cat ' + chunkResultFile + ' >> ' + resultFile
@@ -134,9 +135,12 @@ def setProcessLimits():
     config.read('config.cfg')
     sandboxingConfig = ConfigSectionMap(config, "SandboxingParams")
 
-    resource.setrlimit(resource.RLIMIT_NOFILE, (sanboxingConfig['nfile'], hard))
-    resource.setrlimit(resource.RLIMIT_NPROC, (sanboxingConfig['nproc'], hard))
-    resource.setrlimit(resource.RLIMIT_STACK, (sanboxingConfig['stacksize'], hard))
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (int(sandboxingConfig['nfile']), hard))
+    soft, hard = resource.getrlimit(resource.RLIMIT_NPROC)
+    resource.setrlimit(resource.RLIMIT_NPROC, (int(sandboxingConfig['nproc']), hard))
+    soft, hard = resource.getrlimit(resource.RLIMIT_STACK)
+    resource.setrlimit(resource.RLIMIT_STACK, (int(sandboxingConfig['stacksize']), hard))
 
 def executeJob(jobmgr):
     try:
