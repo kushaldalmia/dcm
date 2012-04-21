@@ -286,6 +286,7 @@ class nwManager:
         elif msg.type == "CPU_REQUEST":
             respMsg = ""
             if self.jobmgr.status == 'AVAILABLE':
+                
                 respMsg = self.createNewMessage('ACK', str(psutil.cpu_percent(interval=1)))
             else:
                 respMsg = self.createNewMessage('NACK','')
@@ -294,6 +295,10 @@ class nwManager:
                 client.close()
             except:
                 pass
+            self.lock.release()
+            return False
+
+        else:
             self.lock.release()
             return False
 
@@ -419,7 +424,13 @@ class nwManager:
             if self.waitForMsg(sock,'ACK') == False:
                 unScheduledQueue.put(chunkindex)
                 return
-            
+
+            timeoutMsg = self.createNewMessage("JOB_TIMEOUT", str(job.timeout))
+            sock.send(timeoutMsg)
+            if self.waitForMsg(sock,'ACK') == False:
+                unScheduledQueue.put(chunkindex)
+                return
+
             self.lock.acquire()
             self.jobmgr.reservedNodes[node] = chunkindex
             self.lock.release()
@@ -449,13 +460,21 @@ class nwManager:
             data = recvMessage(sock)
             msg = Message(data)
             if msg.type != "JOB_DATA":
-                return
+                return False
             sock.settimeout(None)
             sock.send(ackMsg)
             dataSize = int(msg.data)
             self.recvFile(sock, dataFile, dataSize)
             sock.send(ackMsg)
-            job = Job(dataFile, codeFile, opFile, 0)
+            sock.settimeout(3.0)
+            data = recvMessage(sock)
+            msg = Message(data)
+            # To allow timeouts for JOB_TIMEOUT msg
+            if msg.type != "JOB_TIMEOUT":
+                return False
+            sock.settimeout(None)
+            sock.send(ackMsg)
+            job = Job(dataFile, codeFile, opFile, 0, False, False, int(msg.data))
             job.owner = msg.src
             self.jobmgr.curJob = job
             sock.close()
