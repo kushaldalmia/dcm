@@ -289,9 +289,9 @@ class nwManager:
             if self.jobmgr.status == 'AVAILABLE':
                 maxSpeed = 0.0
                 for info in cpu.info:
-                    maxSpeed += info['cpu MHz']
-                curSpeed = maxSpeed * psutil.cpu_percent(interval=1)
-                print 'Current CPU Speed is: ' + str(curSpeed)
+                    maxSpeed += float(info['cpu MHz'])
+                curSpeed = maxSpeed * (1.0 - psutil.cpu_percent(interval=1))
+                print 'Current Idle CPU Speed is: ' + str(curSpeed)
                 respMsg = self.createNewMessage('ACK', str(curSpeed))
             else:
                 respMsg = self.createNewMessage('NACK','')
@@ -569,7 +569,7 @@ class nwManager:
             except:
                 pass
         print curCPU
-        sortedList = sorted(curCPU, key=curCPU.get)
+        sortedList = sorted(curCPU, key=curCPU.get, reverse=True)
         self.lock.acquire()
         self.freeNodes = sortedList[:]
         for node in freeList:
