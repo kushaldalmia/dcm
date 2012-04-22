@@ -50,7 +50,7 @@ def unavailable():
 @app.route('/addjob', methods=['POST'])
 def addjob():
 	mergeResults = False
-	if request.form['merge'] == "True":
+	if request.form['merge'] and request.form['merge'] == "True":
 		mergeResults = True
 	splitByLine = True
 	if request.form['splitoption'] == "Bytes":
