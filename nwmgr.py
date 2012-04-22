@@ -115,12 +115,15 @@ class nwManager:
 
         for n in neighborList:
             print "Neighbor is: " + n
-            self.conn[n] = createConn(n)
-            aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, n,))
-            aliveTimer.start()
-            self.neighbors[n] = (aliveTimer,0)
-            t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
-            t.start()
+            try:
+                self.conn[n] = createConn(n)
+                aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, n,))
+                aliveTimer.start()
+                self.neighbors[n] = (aliveTimer,0)
+                t = threading.Thread(target=connHandler, args=(self, self.conn[n],))
+                t.start()
+            except:
+                pass
         self.freeNodes = []
         self.port = localPort
         self.localIP = getLocalIP()

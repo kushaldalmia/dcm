@@ -9,50 +9,77 @@ from job import *
 
 app = Flask(__name__)
 mgr = None
+appMode = None
 
 @app.route('/', methods=['GET'])
 def index():
-	if 'mode' not in session:
-		session['mode'] = 'Disconnected'
-	return render_template('index.html', mode=session['mode'], error="")
+	global appMode
+	if appMode == None:
+		appMode = 'Disconnected'
+	return render_template('index.html', mode=appMode, error="")
 
-@app.route('/connect', methods=['GET'])
+@app.route('/home', methods=['GET'])
+def home():
+	action = request.args.get('fn','')
+	if  action == 'connect':
+		return connect()
+	elif action == 'disconnect':
+		return disconnect()
+	elif action == 'provider':
+		return provider()
+	elif action == 'consumer':
+		return consumer()
+	else:
+		global appMode
+		return render_template('index.html', mode=appMode, error="")
+
 def connect():
+	global appMode
 	port = get_open_port()
 	config = ConfigParser.ConfigParser()
 	config.read('config.cfg')
 	nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
 	neighbor_list = register_node(getLocalIP(), port, nwMgrConfig['serverip'])
 	if neighbor_list == 'SERVER_FAILURE':
-		return render_template('index.html', mode=session['mode'], error="Server Internal Error!")
+		return render_template('index.html', mode=appMode, error="Server Internal Error!")
 	global mgr
 	mgr = jobManager(port, neighbor_list)
-	session['mode'] = 'Connected'
-	return render_template('index.html', mode=session['mode'], error="")
+	appMode = 'Connected'
+	return render_template('index.html', mode=appMode, error="")
 
-@app.route('/disconnect', methods=['GET'])
 def disconnect():
 	error = ""
+	global appMode
 	try:
 		global mgr
 		mgr.destroyManager()
 		mgr = None
-		session['mode'] = 'Disconnected'
+		appMode = 'Disconnected'
 	except:
 		error = "Server Internal Error!"
-	return render_template('index.html', mode=session['mode'], error=error)
+	return render_template('index.html', mode=appMode, error=error)
 
-@app.route('/provider', methods=['GET'])
 def provider():
 	global mgr
-	mgr.makeAvailable()
-	return render_template('home.html', status="available")
+	global appMode
+	if mgr.curJob == None:
+		mgr.makeAvailable()
+		appMode = 'Provider'
+		return render_template('index.html', mode=appMode, error="")
+	else:
+		error = "Your job is being run on remote nodes currently! Changing mode would lose data!"
+		return render_template('index.html', mode=appMode, error=error)
 
-@app.route('/consumer', methods=['GET'])
 def consumer():
 	global mgr
-	mgr.makeUnavailable()
-	return render_template('home.html', status="unavailable")
+	global appMode
+	if mgr.curJob == None:
+		mgr.makeUnavailable()
+		appMode = 'Consumer'
+		return render_template('index.html', mode=appMode, error="")
+	else:
+		error = "You are currently running a remote job! Changing mode would lose data!"
+		return render_template('index.html', mode=appMode, error=error)
 
 @app.route('/addjob', methods=['POST'])
 def addjob():
