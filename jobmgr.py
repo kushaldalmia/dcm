@@ -101,7 +101,10 @@ def mergeResults(jobmgr, job):
     if job.mergeResults == True:
         # merge all the files into one result file
         resultFile = os.path.join(job.opFile, 'result.txt')
-        os.remove(resultFile)
+        try:
+            os.remove(resultFile)
+        except:
+            pass
         for index in range(0, job.numNodes):
             chunkResultFile = os.path.join(jobmgr.jobDir, 'result' + str(index) + '.txt')
             cmd = 'cat ' + chunkResultFile + ' >> ' + resultFile

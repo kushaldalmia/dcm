@@ -85,6 +85,8 @@ if __name__ == "__main__":
             new_matrix.append(mult(a, b, row))
    
     print new_matrix
+    os.remove("matrix_a.txt")
+    os.remove("matrix_b.txt")
     #write(new_matrix, "matrix_result.txt")
     #print "C="
     #show(new_matrix)
