@@ -101,7 +101,26 @@ def register(ip_add=None, port_no=None):
 		print "ERROR: Node " + node_id + " already existing in DB!"
 		return json.dumps("ALREADY_CONNECTED")
 	return json.dumps("SERVER_FAILURE")
-	
+
+@app.route("/disconnect/<ip_add>/<port_no>/")
+def disconnect(ip_add=None, port_no=None):
+	print "Request received to disconnect IP Address: " + ip_add + " Port:" + port_no
+	node_id = ip_add.strip() + ":" + port_no.strip()
+	if request.remote_addr != backupServer:
+		try:
+			requests.get("http://" + backupServer + "/disconnect/" + ip_add + "/" + port_no + "/")
+		except:
+			pass
+
+	id_list = query_db('select node_id from Nodes where node_id=?',[node_id])
+	if len(id_list) > 0:
+		try:
+			query_db('delete from Nodes where node_id=?',[node_id])
+			g.db.commit()
+		except Exception, e:
+			print "Exception: %s" % e
+			return json.dumps("SERVER_FAILURE")
+			  
 @app.route("/unregister/<remote_ip>/<remote_port>/<ip_add>/<port_no>/")
 def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 	failed_node_id = ip_add.strip() + ":" + port_no.strip()

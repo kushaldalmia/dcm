@@ -151,6 +151,7 @@ class nwManager:
         for key in self.conn:
             self.conn[key].close()
         self.lock.release()
+        disconnect_node(seld.localIP, self.port, self.config['serverip']) 
         self.server.close()
         self.destroy = True
 
@@ -607,7 +608,14 @@ def remove_node(localIP, localPort, nodeIP, nodePort, server):
         data = requests.get("http://" + server + "/unregister/" + str(localIP) + "/" + str(localPort) + "/" + str(nodeIP) + "/" + str(nodePort))
         return json.loads(data.text)
     except:
-        pass
+        return "SERVER_FAILURE"
+
+def disconnect_node(localIP, localPort, server):
+    try:
+        data = requests.get("http://" + server + "/disconnect/" + str(localIP) + "/" + str(localPort))
+        return json.loads(data.text)
+    except:
+        return "SERVER_FAILURE"
 
 def ConfigSectionMap(config, section):
     dict1 = {}
