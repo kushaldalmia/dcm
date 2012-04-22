@@ -64,10 +64,11 @@ def hello():
 def register(ip_add=None, port_no=None):
 	print "Request received to register IP Address: " + ip_add + " Port:" + port_no
 	node_id = ip_add.strip() + ":" + port_no.strip()
-	
-	try:
-		requests.get("http://" + backupServer + "/register/" + ip_add + "/" + port_no + "/")
-	except:
+	if request.remote_addr != backupServer:
+		try:
+			requests.get("http://" + backupServer + "/register/" + ip_add + "/" + port_no + "/")
+		except:
+			traceback.print_exc()
 		pass
 	# See if the IP:PORT is already registered 
 	id_list = query_db('select node_id from Nodes where node_id=?',[node_id])
@@ -105,11 +106,12 @@ def register(ip_add=None, port_no=None):
 def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 	failed_node_id = ip_add.strip() + ":" + port_no.strip()
 	neighbor_node_id = remote_ip.strip() + ":" + remote_port.strip()
-	
-	try:
-		requests.get("http://" + backupServer + "/unregister/" + remote_ip + "/" + remote_port + "/" + ip_add + "/" + port_no + "/")
-	except:
-		pass
+
+	if request.remote_addr != backupServer:
+		try:
+			requests.get("http://" + backupServer + "/unregister/" + remote_ip + "/" + remote_port + "/" + ip_add + "/" + port_no + "/")
+		except:
+			pass
 			  
 	updatedRefCount = -1
 	id_list = query_db('select node_id from Nodes where node_id=?',[failed_node_id])
