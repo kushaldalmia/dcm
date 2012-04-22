@@ -12,6 +12,7 @@ from sendfile import sendfile
 from socket import *
 import threading
 import traceback
+import requests
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -153,7 +154,8 @@ def initBootstrap():
 	port = int(bootstrapConfig['port'])
 	try:
 		requests.get("http://" + backupServer + "/")
-	except:
+	except Exception, e:
+		traceback.print_exc()
 		backupAvailable = False
 	if backupAvailable == False:
 		print "Backup Not Available! Initializing DB"
