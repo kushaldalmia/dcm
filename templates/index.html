@@ -1,17 +1,86 @@
-<html>
-<head>
-<title>DCM</title>
-</head>
-<body>
-  <h1>Distributed Compute Market</h1>
-  <form action="{{ url_for('connect') }}" method=get>
-    <table>
-      <tr>
-      <td>Communication Port:</td>
-      <td><input type=text name=port></td>
-      </tr>
-      <tr><td><input type=submit value=Connect></td></tr>
-    </table>
-  </form>
-</body>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.css') }}">
+    <script src="{{ url_for('static', filename='js/jquery-1.7.2.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-alert.js') }}"></script>
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container" style="width: auto;">
+	  <a class="brand" href="/">DCM</a>
+          <ul class="nav">
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="/runjob">Run Jobs</a></li>
+            <li><a href="/viewjob">View Jobs</a></li>
+          </ul>
+	  <ul class="nav pull-right">
+            <li class="divider-vertical"></li>
+            <li><a href="/"> {{ mode }}</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="row-fluid">
+	<div class="span3">
+	  <div class="hero-unit" style="border:2px solid black">
+	    {% if mode == 'Disconnected' %}
+	    <form action="{{ url_for('connect') }}" method=get>
+	      <h3>DCM Network</h3>
+	      <p>You are Disconnected!</p>
+	      <button class="btn btn-success" type="submit"><i class="icon-ok icon-white"></i> Connect</button>
+	    </form>
+	    {% else %}
+	    <form action="{{ url_for('disconnect') }}" method=get>
+	    <h3>DCM Network</h3>
+	    <p>You are Connected!</p>
+	    <button class="btn btn-danger" type="submit"><i class="icon-remove icon-white"></i> Disconnect</button>
+	    </form>
+	    {% endif %}
+	  </div>
+	</div>
+	<div class="span9">
+	  {% if error and error.__len__() > 0 %}
+          <div class="alert alert-error">
+            <a class="close" data-dismiss="alert" href="/">&times;</a>
+            <strong>Error!</strong> {{ error }}
+          </div>
+          {% endif %}
+	  <table>
+	    {% if mode == 'Provider' or mode == 'Connected' %}
+	    <tr><td>
+		<div class="hero-unit" style="border:2px solid black">
+		  <form action="{{ url_for('consumer') }}" method=get>
+		    <h2>To run your own jobs, change to Consumer Mode.</h2>
+		    <button class="btn btn-inverse" type="submit"><i class="icon-ok icon-white"></i> Change to Consumer</button>
+		  </form>
+		</div>
+	    </td></tr>
+	    {% endif %}
+	    {% if mode == 'Consumer' or mode == 'Connected' %}
+	    <tr><td>
+		<div class="hero-unit" style="border:2px solid black">
+		  <form action="{{ url_for('provider') }}" method=get>
+		    <h2>To allow remote nodes to run jobs, change to Provider Mode.</h2>
+		    <button class="btn btn-inverse" type="submit"><i class="icon-ok icon-white"></i> Change to Producer</button>
+		  </form>
+		</div>
+	    </td></tr>
+	    {% endif %}
+	  </table>
+	</div>
+      </div>
+    </div>
+  </body>
 </html>
+	      

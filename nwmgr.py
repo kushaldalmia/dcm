@@ -595,9 +595,12 @@ def getLocalIP():
     return s.getsockname()[0]
 
 def register_node(localIP, localPort, server):
-    data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort))
-    neighbor_list = json.loads(data.text)
-    return neighbor_list
+    try:
+        data = requests.get("http://" + server + "/register/" + str(localIP) + "/" + str(localPort))
+        neighbor_list = json.loads(data.text)
+        return neighbor_list
+    except:
+        return "SERVER_FAILURE"
 
 def remove_node(localIP, localPort, nodeIP, nodePort, server):
     try:

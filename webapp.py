@@ -4,6 +4,7 @@ import json
 import StringIO, json, hashlib, random, os , base64, time, math, sqlite3, sys
 import urllib, urllib2, datetime
 from jobmgr import *
+import socket
 from job import *
 
 app = Flask(__name__)
@@ -11,38 +12,44 @@ mgr = None
 
 @app.route('/', methods=['GET'])
 def index():
-	return render_template('index.html')
+	if 'mode' not in session:
+		session['mode'] = 'Disconnected'
+	return render_template('index.html', mode=session['mode'], error="")
 
 @app.route('/connect', methods=['GET'])
 def connect():
-	port = int(request.args.get('port',''))
+	port = get_open_port()
 	config = ConfigParser.ConfigParser()
 	config.read('config.cfg')
 	nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
 	neighbor_list = register_node(getLocalIP(), port, nwMgrConfig['serverip'])
-	if neighbor_list == 'ALREADY_CONNECTED':
-		return render_template('home.html', status="unavailable")
 	if neighbor_list == 'SERVER_FAILURE':
-		return render_template('index.html')
+		return render_template('index.html', mode=session['mode'], error="Server Internal Error!")
 	global mgr
 	mgr = jobManager(port, neighbor_list)
-	return render_template('home.html', status="unavailable")
+	session['mode'] = 'Connected'
+	return render_template('index.html', mode=session['mode'], error="")
 
 @app.route('/disconnect', methods=['GET'])
 def disconnect():
-	global mgr
-	mgr.destroyManager()
-	mgr = None
-	return render_template('index.html')
+	error = ""
+	try:
+		global mgr
+		mgr.destroyManager()
+		mgr = None
+		session['mode'] = 'Disconnected'
+	except:
+		error = "Server Internal Error!"
+	return render_template('index.html', mode=session['mode'], error=error)
 
-@app.route('/available', methods=['GET'])
-def available():
+@app.route('/provider', methods=['GET'])
+def provider():
 	global mgr
 	mgr.makeAvailable()
 	return render_template('home.html', status="available")
 
-@app.route('/unavailable', methods=['GET'])
-def unavailable():
+@app.route('/consumer', methods=['GET'])
+def consumer():
 	global mgr
 	mgr.makeUnavailable()
 	return render_template('home.html', status="unavailable")
@@ -72,7 +79,15 @@ def addjob():
 	mgr.addJob(job)
 	return render_template('home.html', status="unavailable")
 
+def get_open_port():
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("",0))
+	port = s.getsockname()[1]
+        s.close()
+        return port
+
 if __name__== "__main__":
 	app.debug = True
+	app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 	app.run('0.0.0.0', int(sys.argv[1]))
 
