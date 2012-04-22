@@ -81,8 +81,26 @@ def consumer():
 		error = "You are currently running a remote job! Changing mode would lose data!"
 		return render_template('index.html', mode=appMode, error=error)
 
+@app.route('/runjob')
+def runjob():
+	global appMode
+	error = ""
+	if appMode != 'Consumer':
+		error = "You need to be in Consumer mode to run jobs!"
+	return render_template('runjob.html', mode=appMode, error=error)
+
 @app.route('/addjob', methods=['POST'])
 def addjob():
+	global appMode
+	global mgr
+	error = ""
+	if appMode != 'Consumer':
+		error = "You need to be in Consumer mode to run jobs!"
+		return render_template('runjob.html', mode=appMode, error=error)
+	if mgr.curJob != None:
+		error = "You are currently running a job on DCM! Please wait for it to finish!"
+		return render_template('runjob.html', mode=appMode, error=error)
+
 	mergeResults = False
 	if request.form['merge'] and request.form['merge'] == "True":
 		mergeResults = True
@@ -90,21 +108,25 @@ def addjob():
 	if request.form['splitoption'] == "Bytes":
 		splitByLine = False
 	if os.path.isfile(request.form['ipfile']) == False:
-		return render_template('home.html', status="unavailable")
+		error = "Input File Does Not Exist!"
+		return render_template('runjob.html', mode=appMode, error=error)
 	if os.path.isfile(request.form['srcfile']) == False:
-		return render_template('home.html', status="unavailable")
+		error = "Source File Does Not Exist!"
+		return render_template('runjob.html', mode=appMode, error=error)
 	if os.path.exists(request.form['opfile']) == False:
-		return render_template('home.html', status="unavailable")
+		error = "Output Directory Does Not Exist!"
+		return render_template('runjob.html', mode=appMode, error=error)
 	if int(request.form['numnodes']) <= 0:
-		return render_template('home.html', status="unavailable")
+		error = "Number of nodes should be a positive number!"
+		return render_template('runjob.html', mode=appMode, error=error)
 	if int(request.form['timeout']) <= 0:
-		return render_template('home.html', status="unavailable")
-	global mgr
+		error = "Timeout should be a positive value (in secs)!"
+		return render_template('runjob.html', mode=appMode, error=error)
 	job = Job(request.form['ipfile'], request.form['srcfile'], 
 		  request.form['opfile'], int(request.form['numnodes']), 
 		  mergeResults, splitByLine, int(request.form['timeout']))
 	mgr.addJob(job)
-	return render_template('home.html', status="unavailable")
+	return render_template('runjob.html', mode=appMode, error=error)
 
 def get_open_port():
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

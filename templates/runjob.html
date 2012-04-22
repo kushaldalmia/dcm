@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.css') }}">
+    <script src="{{ url_for('static', filename='js/jquery-1.7.2.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-alert.js') }}"></script>
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container" style="width: auto;">
+	  <a class="brand" href="/">DCM</a>
+          <ul class="nav">
+            <li><a href="/home">Home</a></li>
+            <li class="active"><a href="#">Run Jobs</a></li>
+            <li><a href="/viewjob">View Jobs</a></li>
+          </ul>
+	  <ul class="nav pull-right">
+            <li class="divider-vertical"></li>
+            <li><a href="/"> {{ mode }}</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="row-fluid">
+	<div class="span4">
+	  <div class="hero-unit" style="border:2px solid black">
+	    <form action="{{ url_for('addjob') }}" method=post>
+	      <table cellspacing="5">
+		<tr>
+		  <td>Input File</td>
+		  <td><input type="text" name="ipfile" /></td>
+		</tr>
+		<tr>
+		  <td>Output Directory</td>
+		  <td><input type="text" name="opfile" /></td>
+		</tr>
+		<tr>
+		  <td>Source File</td>
+		  <td><input type="text" name="srcfile" /></td>
+		</tr>
+		<tr>
+		  <td>Nodes</td>
+		  <td><input type="text" name="numnodes" /></td>
+		</tr>
+		<tr>
+		  <td>Job Timeout</td>
+		  <td><input type="text" name="timeout" /></td>
+		</tr>
+		<tr>
+		  <td colspan="2"><input type="radio" name="splitoption" value="Line"/> Line Splitting
+		  <input type="radio" name="splitoption" value="Bytes" /> Byte Splitting</td>
+		</tr>
+		<tr>
+		  <td colspan="2"><input type="checkbox" name="merge" value="True"/> Merge Results</td>
+		</tr>
+		<tr>
+		  <td></td>
+                  <td align="right">
+                    <button class="btn btn-inverse" type="submit"><i class="icon-play icon-white"></i> Run Job</button>
+                  </td>
+		</tr>
+	      </table>
+	    </form>
+	  </div>
+	</div>
+	<div class="span8">
+	  {% if error and error.__len__() > 0 %}
+          <div class="alert alert-error">
+            <a class="close" data-dismiss="alert" href="/">&times;</a>
+            <strong>Error!</strong> {{ error }}
+          </div>
+          {% endif %}
+	</div>
+      </div>
+    </div>
+  </body>
+</html>
+	      

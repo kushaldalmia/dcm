@@ -154,7 +154,7 @@ class nwManager:
         for key in self.conn:
             self.conn[key].close()
         self.lock.release()
-        disconnect_node(seld.localIP, self.port, self.config['serverip']) 
+        disconnect_node(self.localIP, self.port, self.config['serverip']) 
         self.server.close()
         self.destroy = True
 
@@ -190,7 +190,8 @@ class nwManager:
     def makeUnavailable(self):
         unavlMsg = self.createNewMessage("RES_UNAVL", self.localNodeId)
         self.lock.acquire()
-        self.freeNodes.remove((self.localIP + ":" + str(self.port)))
+        if self.localNodeId in self.freeNodes:
+            self.freeNodes.remove(self.localNodeId)
         self.sendToNeighbors(unavlMsg)
         self.lock.release()
 
