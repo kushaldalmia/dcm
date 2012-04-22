@@ -13,9 +13,12 @@ from socket import *
 import threading
 import traceback
 import requests
+import shutil
 
 app = Flask(__name__)
 app.config.from_object(__name__)
+
+backupServer = None
 
 #configs
 DEBUG = True
@@ -62,6 +65,10 @@ def register(ip_add=None, port_no=None):
 	print "Request received to register IP Address: " + ip_add + " Port:" + port_no
 	node_id = ip_add.strip() + ":" + port_no.strip()
 	
+	try:
+		requests.get("http://" + backupServer + "/register/" + ip_add + "/" + port_no + "/")
+	except:
+		pass
 	# See if the IP:PORT is already registered 
 	id_list = query_db('select node_id from Nodes where node_id=?',[node_id])
 	if id_list == []:
@@ -99,6 +106,11 @@ def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 	failed_node_id = ip_add.strip() + ":" + port_no.strip()
 	neighbor_node_id = remote_ip.strip() + ":" + remote_port.strip()
 	
+	try:
+		requests.get("http://" + backupServer + "/unregister/" + remote_ip + "/" + remote_port + "/" + ip_add + "/" + port_no + "/")
+	except:
+		pass
+			  
 	updatedRefCount = -1
 	id_list = query_db('select node_id from Nodes where node_id=?',[failed_node_id])
 	if len(id_list) > 0:
@@ -144,7 +156,7 @@ def initBootstrap():
         config.read('../config.cfg')
         bootstrapConfig = ConfigSectionMap(config, "Bootstrap")
 	localIP = getLocalIP()
-	backupServer = ""
+	global backupServer
 	if bootstrapConfig['server1'] == localIP:
 		backupServer = bootstrapConfig['server2']
 	else:
@@ -201,7 +213,6 @@ def backupHandler(client):
 			sendFile(client, '\tmp\dcm-copy.db')
 			client.close()
 	except Exception, e:
-		traceback.print_exc()
 		print "Exception in backupHandler()"
 		return
 	return
