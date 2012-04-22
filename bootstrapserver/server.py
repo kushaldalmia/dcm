@@ -6,6 +6,11 @@ from contextlib import closing
 import json
 import StringIO, json, hashlib, random, os , base64, time, math, sqlite3, sys
 import urllib, urllib2, datetime
+from message import *
+import ConfigParser
+from sendfile import sendfile
+from socket import *
+import threading
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -56,7 +61,6 @@ def register(ip_add=None, port_no=None):
 	
 	# See if the IP:PORT is already registered 
 	id_list = query_db('select node_id from Nodes where node_id=?',[node_id])
-		
 	if id_list == []:
 		try:
 			nodes_entries = query_db('SELECT * FROM Nodes ORDER BY ref_count')
@@ -132,6 +136,141 @@ def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 			return json.dumps("SERVER_FAILURE")
 	return json.dumps(newNeighbor)
 
+def initBootstrap():
+	config = ConfigParser.ConfigParser()
+        config.read('../config.cfg')
+        bootstrapConfig = ConfigSectionMap(config, "Bootstrap")
+	localIP = getLocalIP()
+	backupServer = ""
+	if bootstrapConfig['server1'] == localIP:
+		backupServer = bootstrapConfig['server2']
+	else:
+		backupServer = bootstrapConfig['server1']
+	print "Backup Server is: " + backupServer
+	backupAvailable = True
+	port = int(bootstrapConfig['port'])
+	try:
+		requests.get("http://" + backupServer + "/")
+	except:
+		backupAvailable = False
+	if backupAvailable == False:
+		print "Backup Not Available! Initializing DB"
+		init_db()
+	else:
+		print "Backup Available! Pulling from Primary!"
+		getLatestDatabase(backupServer, port)
+		connect_db()
+	t = threading.Thread(target=connHandler, args=(port,))
+	t.daemon = True
+	t.start()
+	return
+	
+def connHandler(port):
+	# Initalize listening socket                                                                                                                                   
+        server = socket(AF_INET, SOCK_STREAM)
+        server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+	server.bind(('', port))
+        server.listen(5)
+        
+	while True:
+		try:
+			client, addr = server.accept()
+			t = threading.Thread(target=backupHandler, args=(client,))
+			t.daemon = True
+			t.start()
+		except:
+			print "Exception in connHandler"
+			server.close()
+			return
+	server.close()
+
+def backupHandler(client):
+	try:
+		msg = recvMessage(client)
+		if msg.type == "GET_DB":
+			print "Received GET_DB from backup!"
+			shutil.copyfile(DATABASE, "\tmp\dcm-copy.db")
+			fsize = os.stat('\tmp\dcm-copy.db').st_size
+			msg = '---' + 'ACK' + '-' + str(fsize)
+			client.send("%04d" % len(msg) + "-" + msg)
+			sendFile(client, '\tmp\dcm-copy.db')
+			client.close()
+	except Exception, e:
+		print "Exception in backupHandler()"
+		return
+	return
+
+def sendFile(sock, filename):
+        srcfile = open(filename, "rb")
+        offset = 0
+        while True:
+            sent = sendfile(sock.fileno(), srcfile.fileno(), offset, 65536)
+            if sent == 0:
+                break
+	        offset += sent
+        srcfile.close()
+
+
+def recvMessage(sock):
+    msgLen = sock.recv(MSG_LEN_FIELD)
+    if len(msgLen) == 0:
+        return ''
+    msgLen = int(msgLen[:4])
+    data = sock.recv(msgLen)
+    return data
+
+
+def getLatestDatabase(backup, port):
+	try:
+		sock = socket(AF_INET, SOCK_STREAM)
+		sock.connect((backup, port))
+		msg = '---' + 'GET_DB' + '-'
+		sock.send("%04d" % len(msg) + "-" + msg)
+		data = recvMessage(sock)
+		reply = Message(data)
+		if reply.type == 'ACK':
+			size = int(reply.data)
+		else:
+			sock.close()
+			return False
+		recvFile(sock, DATABASE, size)
+		sock.close()
+	except:
+		print "Exception in getLatestDB"
+		sock.close()
+
+def recvFile(sock, filename, size):
+        fileObj = open(filename, 'w')
+        offset = 0
+        while True:
+		data = sock.recv((size - offset))
+		if len(data) == 0:
+			break
+		fileObj.write(data)
+		offset += len(data)
+		if offset >= size:
+			break
+	fileObj.close()
+
+def getLocalIP():
+    s = socket(AF_INET, SOCK_DGRAM)
+    s.connect(('google.com', 0))
+    return s.getsockname()[0]
+
+def ConfigSectionMap(config, section):
+    dict1 = {}
+    options = config.options(section)
+    for option in options:
+        try:
+            dict1[option] = config.get(section, option)
+            if dict1[option] == -1:
+                DebugPrint("skip: %s" % option)
+        except:
+            print("exception on %s!" % option)
+            dict1[option] = None
+
+    return dict1
+
 if __name__== "__main__":
-        init_db()
-	app.run(host='0.0.0.0')
+	initBootstrap()
+	app.run(host='0.0.0.0', port=80)

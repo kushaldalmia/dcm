@@ -82,8 +82,7 @@ def handleTimeout(manager, node):
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
         result = remove_node(manager.localIP, manager.port, node.split(":")[0],
-                             node.split(":")[1], manager.config['serverip'] + ':' +
-                             manager.config['serverport'])
+                             node.split(":")[1], manager.config['serverip'])
 
         if result != '':
             manager.sendNeighborInitMsg(result)
@@ -141,6 +140,7 @@ class nwManager:
         self.server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.server.bind(('', self.port))
         self.server.listen(5)
+        # Timeout required to check every one sec if node has to be destroyed
         self.server.settimeout(1.0)
 
         t = threading.Thread(target=acceptConn, args=(self, self.server,))
@@ -566,7 +566,8 @@ class nwManager:
                     count += 1
                     if count == (numNodes * 2):
                         break
-            except:
+            except Exception, e:
+                traceback.print_exc()
                 pass
         print curCPU
         sortedList = sorted(curCPU, key=curCPU.get, reverse=True)

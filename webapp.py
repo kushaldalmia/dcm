@@ -19,8 +19,7 @@ def connect():
 	config = ConfigParser.ConfigParser()
 	config.read('config.cfg')
 	nwMgrConfig = ConfigSectionMap(config, "NetworkManager")
-	serverAddr = nwMgrConfig['serverip'] + ':' + nwMgrConfig['serverport']
-	neighbor_list = register_node(getLocalIP(), port, serverAddr)
+	neighbor_list = register_node(getLocalIP(), port, nwMgrConfig['serverip'])
 	if neighbor_list == 'ALREADY_CONNECTED':
 		return render_template('home.html', status="unavailable")
 	if neighbor_list == 'SERVER_FAILURE':
