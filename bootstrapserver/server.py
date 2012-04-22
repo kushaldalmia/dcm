@@ -11,6 +11,7 @@ import ConfigParser
 from sendfile import sendfile
 from socket import *
 import threading
+import traceback
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -22,6 +23,7 @@ USERNAME = 'admin'
 PASSWORD = 'default'
 SECRET_KEY = '\xf1\xb1R\xb5\x07lQri\x87\x03\xc2/\xe3h[\xea\xd8\xef\xcd'
 MAX_PEERS = 3
+MSG_LEN_FIELD = 5
 
 def connect_db():
 	print "Trying to connect to the Database " + DATABASE
@@ -180,22 +182,24 @@ def connHandler(port):
 			t.start()
 		except:
 			print "Exception in connHandler"
+			traceback.print_exc()
 			server.close()
 			return
 	server.close()
 
 def backupHandler(client):
 	try:
-		msg = recvMessage(client)
+		msg = Message(recvMessage(client))
 		if msg.type == "GET_DB":
 			print "Received GET_DB from backup!"
 			shutil.copyfile(DATABASE, "\tmp\dcm-copy.db")
 			fsize = os.stat('\tmp\dcm-copy.db').st_size
-			msg = '---' + 'ACK' + '-' + str(fsize)
+			msg = '0-0-0-' + 'ACK' + '-' + str(fsize)
 			client.send("%04d" % len(msg) + "-" + msg)
 			sendFile(client, '\tmp\dcm-copy.db')
 			client.close()
 	except Exception, e:
+		traceback.print_exc()
 		print "Exception in backupHandler()"
 		return
 	return
@@ -224,7 +228,7 @@ def getLatestDatabase(backup, port):
 	try:
 		sock = socket(AF_INET, SOCK_STREAM)
 		sock.connect((backup, port))
-		msg = '---' + 'GET_DB' + '-'
+		msg = '0-0-0-' + 'GET_DB' + '-'
 		sock.send("%04d" % len(msg) + "-" + msg)
 		data = recvMessage(sock)
 		reply = Message(data)
@@ -236,6 +240,7 @@ def getLatestDatabase(backup, port):
 		recvFile(sock, DATABASE, size)
 		sock.close()
 	except:
+		traceback.print_exc()
 		print "Exception in getLatestDB"
 		sock.close()
 
