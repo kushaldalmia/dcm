@@ -508,6 +508,7 @@ class nwManager:
             opMsg = self.createNewMessage("JOB_COMPLETE", str(opsize) + ":" + str(job.cost))
             sock.send(opMsg)
             if self.waitForMsg(sock,'ACK') == False:
+                print "Incrementing account balance by: " + str(job.timeout)
                 self.jobmgr.accountBalance += job.timeout
                 return
             self.jobmgr.jobStatus.put('SENDING_RESULTS')

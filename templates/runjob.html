@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    {% if percentage.__len__() > 0 and percentage != '0' and percentage != '100' %}
+    <meta http-equiv="refresh" content="5" />
+    {% endif %}
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.css') }}">
     <script src="{{ url_for('static', filename='js/jquery-1.7.2.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
@@ -20,7 +23,7 @@
 	  <a class="brand" href="/">DCM</a>
           <ul class="nav">
             <li><a href="/home">Home</a></li>
-            <li class="active"><a href="#">Run Jobs</a></li>
+            <li class="active"><a href="#">Current Jobs</a></li>
             <li><a href="/viewjob">View Jobs</a></li>
           </ul>
 	  <ul class="nav pull-right">
@@ -41,7 +44,7 @@
 		  <td><input type="text" name="ipfile" /></td>
 		</tr>
 		<tr>
-		  <td>Output Directory</td>
+		  <td>Output Dir</td>
 		  <td><input type="text" name="opfile" /></td>
 		</tr>
 		<tr>
@@ -53,7 +56,7 @@
 		  <td><input type="text" name="numnodes" /></td>
 		</tr>
 		<tr>
-		  <td>Job Timeout</td>
+		  <td>Timeout</td>
 		  <td><input type="text" name="timeout" /></td>
 		</tr>
 		<tr>
@@ -76,10 +79,38 @@
 	<div class="span8">
 	  {% if error and error.__len__() > 0 %}
           <div class="alert alert-error">
-            <a class="close" data-dismiss="alert" href="/">&times;</a>
+            <a class="close" data-dismiss="alert" href="/runjob">&times;</a>
             <strong>Error!</strong> {{ error }}
           </div>
           {% endif %}
+	  {% if jobCost and jobCost.__len__() > 0 %}
+          <div class="alert alert-success">
+            <a class="close" data-dismiss="alert" href="/runjob">&times;</a>
+            <strong>Congratulations!</strong> The last job execution earned you ${{ jobCost }}!
+          </div>
+	  {% endif %}
+	  {% if percentage != '0' and percentage.__len__() > 0 %}
+	  <div class="progress progress-striped active">
+	    <div class="bar" style="width: {{ percentage }}%"></div>
+	  </div>
+	  {% endif %}
+	  <table class="table" align="center" cellpadding="5">
+	    <thead>
+	      <tr><th>Current Job Status</th></tr>
+	    </thead>
+	    <tbody>
+	    {% for i in range(0, statusInfo.__len__() - 1) %}
+	    <tr><td>
+		<p>{{ statusInfo[i] }}</p>
+	    </td></tr>
+	    {% endfor %}
+	    {% if statusInfo.__len__() > 0 %}
+	    <tr><td style="border:2px solid black">
+		<p>{{ statusInfo[statusInfo.__len__() - 1] }}</p>
+	    </td></tr>
+	    {% endif %}
+	    </tbody>
+	  </table>
 	</div>
       </div>
     </div>

@@ -10,6 +10,8 @@ from job import *
 app = Flask(__name__)
 mgr = None
 appMode = None
+statusInfo = None
+jobCost = ''
 
 @app.route('/', methods=['GET'])
 def index():
@@ -43,7 +45,14 @@ def connect():
 	if neighbor_list == 'SERVER_FAILURE':
 		return render_template('index.html', mode=appMode, error="Server Internal Error!")
 	global mgr
+	global statusInfo
+	global jobCost
 	mgr = jobManager(port, neighbor_list)
+	jobCost = ''
+	statusInfo = []
+	t = threading.Thread(target=getJobStatus, args=(mgr.jobStatus, ))
+	t.daemon = True
+	t.start()
 	appMode = 'Connected'
 	return render_template('index.html', mode=appMode, error="")
 
@@ -84,10 +93,15 @@ def consumer():
 @app.route('/runjob')
 def runjob():
 	global appMode
-	error = ""
-	if appMode != 'Consumer':
-		error = "You need to be in Consumer mode to run jobs!"
-	return render_template('runjob.html', mode=appMode, error=error)
+	global statusInfo
+	if appMode == 'Connected' or appMode == 'Disconnected':
+		error = "You need to be a Provider/Consumer to add/view jobs!"
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error)
+	if appMode == 'Provider':
+		percentage = str(int(float(len(statusInfo)) * 12.5))
+	elif appMode == 'Consumer':
+		percentage = str(len(statusInfo) * 20)
+	return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage=percentage, jobCost=jobCost)
 
 @app.route('/addjob', methods=['POST'])
 def addjob():
@@ -134,6 +148,21 @@ def get_open_port():
 	port = s.getsockname()[1]
         s.close()
         return port
+
+def getJobStatus(statusQueue):
+	global statusInfo
+	global jobCost
+	while True:
+		status = statusQueue.get()
+		if status == 'NEW_JOB_REQUEST':
+			statusInfo = []
+			jobCost = ''
+		elif ':' in status:
+			info = status.split(":")
+			status = info[0]
+			jobCost = info[1]
+		print "Added " + status + " to statusInfo"
+		statusInfo.append(status)
 
 if __name__== "__main__":
 	app.debug = True
