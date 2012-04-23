@@ -50,6 +50,7 @@ class jobManager:
         self.unScheduledQueue = Queue.Queue(maxsize=0)
         self.chunkStatus = Queue.Queue(maxsize=0)
         self.reservedNodes = {}
+        self.jobStatus.put('NEW_JOB_REQUEST')
         for i in range(0, job.numNodes):
             self.unScheduledQueue.put(i)
         self.curJob = job
@@ -73,9 +74,10 @@ class jobManager:
         self.curJob = None
         
 def scheduleJob(jobmgr, job):
-    
+    jobmgr.jobStatus.put('SPLITTING_JOB')
     jobmgr.nwmgr.getCPUInfo(job.numNodes)
     splitJob(jobmgr, job)
+    jobmgr.jobStatus.put('SCHEDULING_JOB')
     jobmgr.jobTimer = threading.Timer(1, handleJobTimeout, args=(jobmgr,))
     jobmgr.jobTimer.start()
 
@@ -84,12 +86,15 @@ def scheduleJob(jobmgr, job):
         print "Scheduling chunk index " + str(chunkindex)
         if chunkindex == -1:
             print "Job Completed"
+            jobmgr.jobStatus.put('MERGING_RESULTS')
             mergeResults(jobmgr, job)
+            jobmgr.jobStatus.put('JOB_COMPLETED')
             jobmgr.curJob = None
             return
         node = jobmgr.nwmgr.reserveNode()
         if node == 'FAILURE':
             print "Job Execution Failed"
+            jobmgr.jobStatus.put('FAILED_EXECUTION')
             jobmgr.nwmgr.releaseNodes()
             jobmgr.accountBalance += (job.numNodes * job.timeout)
             jobmgr.curJob = None
