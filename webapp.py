@@ -36,7 +36,10 @@ def home():
 		return consumer()
 	else:
 		global appMode
-		return render_template('index.html', mode=appMode, error="")
+		error = ""
+		if appMode == None:
+			error = "Please connect to the DCM Network!"
+		return render_template('index.html', mode=appMode, error=error)
 
 def connect():
 	global appMode
