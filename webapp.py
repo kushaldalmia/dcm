@@ -12,6 +12,7 @@ mgr = None
 appMode = None
 statusInfo = None
 jobCost = ''
+runningJob = False
 
 @app.route('/', methods=['GET'])
 def index():
@@ -71,9 +72,15 @@ def disconnect():
 def provider():
 	global mgr
 	global appMode
+	global statusInfo
+	global jobCost
+	global runningJob
 	if mgr.curJob == None:
 		mgr.makeAvailable()
 		appMode = 'Provider'
+		statusInfo = []
+		jobCost = ''
+		runningJob = False
 		return render_template('index.html', mode=appMode, error="")
 	else:
 		error = "Your job is being run on remote nodes currently! Changing mode would lose data!"
@@ -82,9 +89,15 @@ def provider():
 def consumer():
 	global mgr
 	global appMode
+	global statusInfo
+	global jobCost
+	global runningJob
 	if mgr.curJob == None:
 		mgr.makeUnavailable()
 		appMode = 'Consumer'
+		statusInfo = []
+		jobCost = ''
+		runningJob = False
 		return render_template('index.html', mode=appMode, error="")
 	else:
 		error = "You are currently running a remote job! Changing mode would lose data!"
@@ -94,26 +107,31 @@ def consumer():
 def runjob():
 	global appMode
 	global statusInfo
+	global jobCost
+	global runningJob
 	if appMode == 'Connected' or appMode == 'Disconnected':
 		error = "You need to be a Provider/Consumer to add/view jobs!"
-		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
 	if appMode == 'Provider':
 		percentage = str(int(float(len(statusInfo)) * 12.5))
 	elif appMode == 'Consumer':
 		percentage = str(len(statusInfo) * 20)
-	return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage=percentage, jobCost=jobCost)
+	return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage=percentage, jobCost=jobCost, runningJob=runningJob)
 
 @app.route('/addjob', methods=['POST'])
 def addjob():
 	global appMode
 	global mgr
+	global statusInfo
+	global jobCost
+	global runningJob
 	error = ""
 	if appMode != 'Consumer':
 		error = "You need to be in Consumer mode to run jobs!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
 	if mgr.curJob != None:
 		error = "You are currently running a job on DCM! Please wait for it to finish!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
 
 	mergeResults = False
 	if request.form['merge'] and request.form['merge'] == "True":
@@ -140,7 +158,11 @@ def addjob():
 		  request.form['opfile'], int(request.form['numnodes']), 
 		  mergeResults, splitByLine, int(request.form['timeout']))
 	mgr.addJob(job)
-	return render_template('runjob.html', mode=appMode, error=error)
+	runningJob = True
+	if error == "":
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
+	else:
+		return redirect(url_for('/runjob'))
 
 def get_open_port():
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -152,6 +174,7 @@ def get_open_port():
 def getJobStatus(statusQueue):
 	global statusInfo
 	global jobCost
+	global runningJob
 	while True:
 		status = statusQueue.get()
 		if status == 'NEW_JOB_REQUEST':
@@ -161,6 +184,8 @@ def getJobStatus(statusQueue):
 			info = status.split(":")
 			status = info[0]
 			jobCost = info[1]
+		if 'JOB_COMPLETED' in status or 'EXECUTION_FAILED' in status:
+			runningJob = False
 		print "Added " + status + " to statusInfo"
 		statusInfo.append(status)
 

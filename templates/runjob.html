@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    {% if percentage.__len__() > 0 and percentage != '0' and percentage != '100' %}
-    <meta http-equiv="refresh" content="5" />
+    {% if mode == 'Provider' %}
+    <meta http-equiv="refresh" content="{{ '5;url=' + url_for('runjob') }}" />
+    {% endif %}
+    {% if mode == 'Consumer' and runningJob and runningJob == True %}
+    <meta http-equiv="refresh" content="{{ '5;url=' + url_for('runjob') }}" />
     {% endif %}
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.css') }}">
     <script src="{{ url_for('static', filename='js/jquery-1.7.2.js') }}"></script>
@@ -84,10 +87,17 @@
           </div>
           {% endif %}
 	  {% if jobCost and jobCost.__len__() > 0 %}
+	  {% if mode == 'Provider' %}
           <div class="alert alert-success">
             <a class="close" data-dismiss="alert" href="/runjob">&times;</a>
             <strong>Congratulations!</strong> The last job execution earned you ${{ jobCost }}!
           </div>
+	  {% else %}
+	  <div class="alert alert-warning">
+            <a class="close" data-dismiss="alert" href="/runjob">&times;</a>
+            <strong>Congratulations!</strong> The last job was completed and costed you ${{ jobCost }}!
+          </div>
+	  {% endif %}
 	  {% endif %}
 	  {% if percentage != '0' and percentage.__len__() > 0 %}
 	  <div class="progress progress-striped active">
