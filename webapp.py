@@ -206,7 +206,7 @@ def getJobStatus(statusQueue):
 				providerHistory.append(int(jobCost))
 			elif appMode == 'Consumer':
 				consumerHistory.append(int(jobCost))
-		if 'JOB_COMPLETED' in status or 'EXECUTION_FAILED' in status:
+		if 'JOB_COMPLETED' in status or 'FAILED_EXECUTION' in status:
 			runningJob = False
 		print "Added " + status + " to statusInfo"
 		statusInfo.append(status)
