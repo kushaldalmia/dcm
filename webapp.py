@@ -64,9 +64,12 @@ def disconnect():
 	global appMode
 	try:
 		global mgr
-		mgr.destroyManager()
-		mgr = None
-		appMode = 'Disconnected'
+		if mgr.curJob == None:
+			mgr.destroyManager()
+			mgr = None
+			appMode = 'Disconnected'
+		else:
+			error = "You have active jobs running on your system!"
 	except:
 		error = "Server Internal Error!"
 	return render_template('index.html', mode=appMode, error=error)
