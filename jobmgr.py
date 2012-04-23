@@ -88,7 +88,6 @@ def scheduleJob(jobmgr, job):
             print "Job Completed"
             jobmgr.jobStatus.put('MERGING_RESULTS')
             mergeResults(jobmgr, job)
-            jobmgr.jobStatus.put('JOB_COMPLETED')
             jobmgr.curJob = None
             return
         node = jobmgr.nwmgr.reserveNode()
@@ -182,6 +181,8 @@ def handleJobTimeout(jobmgr):
         jobmgr.unScheduledQueue.put(-1)
         jobmgr.chunkStatus = Queue.Queue(maxsize=0)
         jobmgr.accountBalance += jobmgr.curJob.cost
+        jobCost = (jobmgr.curJob.numNodes * jobmgr.curJob.timeout) - jobmgr.curJob.cost
+        jobmgr.jobStatus.put('JOB_COMPLETED:' + str(jobCost))
         print "Final account balance is: " + str(jobmgr.accountBalance)
         print "Added chunkindex -1 to unsched Queue"
     else:
