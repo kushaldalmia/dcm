@@ -27,6 +27,7 @@ class jobManager:
         self.reservedNodes = {}
         self.chunkStatus = Queue.Queue(maxsize=0)
         self.unScheduledQueue = Queue.Queue(maxsize=0)
+        self.jobStatus = Queue.Queue(maxsize=0)
         self.jobDir = tempfile.mkdtemp()
         self.accountBalance = 0
     
@@ -60,6 +61,7 @@ class jobManager:
         return True
     
     def runJob(self):
+        self.jobStatus.put('STARTED_EXECUTION')
         t = threading.Thread(target=executeJob, args=(self,))
         t.start()
         return
@@ -154,10 +156,12 @@ def executeJob(jobmgr):
         p = psutil.Popen([sys.executable, job.srcFile], preexec_fn=setProcessLimits,
                              stdin=ipObj, stdout=opObj, stderr=opObj)
         p.wait(timeout=job.timeout)
+        jobmgr.jobStatus.put('FINISHED_EXECUTION')
         job.cost = int(math.ceil(float(time.time() - startTime)))
     except Exception, e:
         print "Exception in executeJob: %s" % e
         traceback.print_exc()
+        jobmgr.jobStatus.put('FAILED_EXECUTION')
         p.kill()
         job.cost = job.timeout
         opObj.write("Job Execution Caused Exception!")

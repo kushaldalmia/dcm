@@ -269,6 +269,7 @@ class nwManager:
 
         elif msg.type == "JOB_CODE":
             self.lock.release()
+            self.jobmgr.jobStatus.put('NEW_JOB_REQUEST')
             if self.getJob(client, msg) == False:
                 self.jobmgr.status = 'AVAILABLE'
                 return False
@@ -457,6 +458,7 @@ class nwManager:
         try:
             ackMsg = self.createNewMessage("ACK", "")
             sock.send(ackMsg)
+            self.jobmgr.jobStatus.put('WAIT_FOR_CODE')
             codeSize = int(msg.data)
             codeFile = os.path.join(self.jobmgr.jobDir, "script.py")
             dataFile = os.path.join(self.jobmgr.jobDir, "data.txt")
@@ -465,6 +467,7 @@ class nwManager:
             self.recvFile(sock, codeFile, codeSize)
             os.chmod(codeFile, 0777)
             sock.send(ackMsg)
+            self.jobmgr.jobStatus.put('WAIT_FOR_DATA')
             # To allow timeouts for JOB_DATA msg
             sock.settimeout(3.0)
             data = recvMessage(sock)
@@ -476,6 +479,7 @@ class nwManager:
             dataSize = int(msg.data)
             self.recvFile(sock, dataFile, dataSize)
             sock.send(ackMsg)
+            self.jobmgr.jobStatus.put('WAIT_FOR_TIMEOUT')
             sock.settimeout(3.0)
             data = recvMessage(sock)
             msg = Message(data)
@@ -491,6 +495,7 @@ class nwManager:
 
         except Exception, e:
             print "Exception in getJob: %s" % e
+            self.jobmgr.jobStatus.put('JOB_RECEIVED_FAILED')
             traceback.print_exc()
             sock.close()
             return False
@@ -505,16 +510,19 @@ class nwManager:
             if self.waitForMsg(sock,'ACK') == False:
                 self.jobmgr.accountBalance += job.timeout
                 return
+            self.jobmgr.jobStatus.put('SENDING_RESULTS')
             self.sendFile(sock, job.opFile)
             self.waitForMsg(sock,'ACK')
             sock.close()
             print "Incrementing account balance by: " + str(job.cost)
             self.jobmgr.accountBalance += job.cost
+            self.jobmgr.jobStatus.put('JOB_COMPLETED')
             return
         except Exception, e:
             print "Exception in sendResponse: %s" % e
             print "Incrementing account balance by: " + job.cost
             self.jobmgr.accountBalance += job.timeout
+            self.jobmgr.jobStatus.put('SENDING_RESULTS_FAILED')
             traceback.print_exc()
             sock.close()
             return
