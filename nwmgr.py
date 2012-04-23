@@ -521,7 +521,7 @@ class nwManager:
             return
         except Exception, e:
             print "Exception in sendResponse: %s" % e
-            print "Incrementing account balance by: " + job.cost
+            print "Incrementing account balance by: " + str(job.cost)
             self.jobmgr.accountBalance += job.timeout
             self.jobmgr.jobStatus.put('RESPONSE_FAILED:' + str(job.cost))
             traceback.print_exc()
