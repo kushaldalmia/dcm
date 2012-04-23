@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.css') }}">
+    <script src="{{ url_for('static', filename='js/jquery-1.7.2.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-alert.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/flot/jquery.flot.js') }}"></script>
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+    <script type="text/javascript">
+      $(function () {
+      var d1 = []
+      {% for i in range(0, providerHistory.__len__()) %}
+      d1.push([{{ i+1 }}, {{ providerHistory[i] }}])
+      {% endfor %}
+      $.plot($("#provplaceholder"), [
+      {
+      data: d1,
+      color: "rgb(50,205,50)",
+      bars: { show: true }
+      }
+      ]);
+
+      var d2 = []
+      {% for i in range(0, consumerHistory.__len__()) %}
+      d2.push([{{ i+1 }}, {{ consumerHistory[i] }}])
+      {% endfor %}
+      $.plot($("#consplaceholder"), [
+      {
+      data: d2,
+      color: "rgb(200, 20, 30)",
+      bars: { show: true }
+      }
+      ]);
+      
+      });
+    </script>
+  </head>
+  
+  <body>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container" style="width: auto;">
+	  <a class="brand" href="/">DCM</a>
+          <ul class="nav">
+            <li><a href="/home">Home</a></li>
+            <li><a href="/runjob">Current Jobs</a></li>
+            <li class="active"><a href="#">View Jobs</a></li>
+          </ul>
+	  <ul class="nav pull-right">
+            <li class="divider-vertical"></li>
+            <li><a href="/"> {{ mode }}</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="row-fluid">
+	<div class="span8">
+	  {% if error and error.__len__() > 0 %}
+            <div class="alert alert-error">
+              <a class="close" data-dismiss="alert" href="/runjob">&times;</a>
+              <strong>Error!</strong> {{ error }}
+            </div>
+	    {% endif %}
+	    <div class="well" style="border:2px solid black">
+	    <table style="width:100%;height:100%">
+	      <tr><td><h3>Provider History</h3></td></tr>
+	      <tr><td>
+		  <div id="provplaceholder" style="width:100%;height:300px"></div>
+	      </td></tr>
+	      <tr><td><h3>Consumer History</h3></td></tr>
+	      <tr><td>
+		  <div id="consplaceholder" style="width:100%;height:300px"></div>
+	      </td></tr>
+	    </table>
+	    </div>
+	  </div>
+	</div>
+      </div>
+    </div>
+  </body>
+</html>
+	      

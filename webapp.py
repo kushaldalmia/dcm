@@ -13,6 +13,8 @@ appMode = None
 statusInfo = None
 jobCost = ''
 runningJob = False
+providerHistory = []
+consumerHistory = []
 
 @app.route('/', methods=['GET'])
 def index():
@@ -164,6 +166,18 @@ def addjob():
 	else:
 		return redirect(url_for('/runjob'))
 
+@app.route('/viewjob')
+def viewjob():
+	global appMode
+	global providerHistory
+	global consumerHistory
+
+	if appMode == 'Connected' or appMode == 'Disconnected':
+		error = "You need to be a Provider/Consumer to add/view jobs!"
+		return render_template('viewjob.html', mode=appMode, error=error)
+	else:
+		return render_template('viewjob.html', mode=appMode, providerHistory=providerHistory, consumerHistory=consumerHistory)
+
 def get_open_port():
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(("",0))
@@ -175,6 +189,10 @@ def getJobStatus(statusQueue):
 	global statusInfo
 	global jobCost
 	global runningJob
+	global providerHistory
+	global consumerHistory
+	global appMode
+
 	while True:
 		status = statusQueue.get()
 		if status == 'NEW_JOB_REQUEST':
@@ -184,6 +202,10 @@ def getJobStatus(statusQueue):
 			info = status.split(":")
 			status = info[0]
 			jobCost = info[1]
+			if appMode == 'Provider':
+				providerHistory.append(int(jobCost))
+			elif appMode == 'Consumer':
+				consumerHistory.append(int(jobCost))
 		if 'JOB_COMPLETED' in status or 'EXECUTION_FAILED' in status:
 			runningJob = False
 		print "Added " + status + " to statusInfo"
