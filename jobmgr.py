@@ -68,7 +68,8 @@ class jobManager:
         return
 
     def completeJob(self):
-        self.nwmgr.sendResponse(self.curJob)
+        if self.curJob.isTerminated != True:
+            self.nwmgr.sendResponse(self.curJob)
         self.status = 'AVAILABLE'
         print 'Made node available!'
         self.curJob = None
@@ -157,16 +158,17 @@ def executeJob(jobmgr):
         ipObj = open(job.ipFile, 'r')
         opObj = open(job.opFile, 'w')
         startTime = time.time()
-        p = psutil.Popen([sys.executable, job.srcFile], preexec_fn=setProcessLimits,
+        job.process = psutil.Popen([sys.executable, job.srcFile], preexec_fn=setProcessLimits,
                              stdin=ipObj, stdout=opObj, stderr=opObj)
-        p.wait(timeout=job.timeout)
+        job.process.wait(timeout=job.timeout)
         jobmgr.jobStatus.put('FINISHED_EXECUTION')
         job.cost = int(math.ceil(float(time.time() - startTime)))
     except Exception, e:
+        if job.process.is_running() == True:
+            job.process.kill()
         print "Exception in executeJob: %s" % e
         traceback.print_exc()
         jobmgr.jobStatus.put('FAILED_EXECUTION')
-        p.kill()
         job.cost = job.timeout
         opObj.write("Job Execution Caused Exception!")
     ipObj.close()

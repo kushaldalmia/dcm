@@ -9,6 +9,8 @@ class Job:
         self.opFile = opFile
         self.numNodes = numNodes
         self.owner = None
+        self.process = None
+        self.isTerminated = False
         self.mergeResults = mergeResults
         self.splitByLine = splitByLine
         self.timeout = timeout

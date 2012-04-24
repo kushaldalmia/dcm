@@ -264,6 +264,10 @@ class nwManager:
 
         elif msg.type == "RELEASE_REQ":
             client.close()
+            if self.jobmgr.curJob != None:
+                self.jobmgr.curJob.isTerminated = True
+                if self.jobmgr.curJob.process.is_running() == True:
+                    self.jobmgr.curJob.process.kill()
             self.lock.release()
             return False
 
