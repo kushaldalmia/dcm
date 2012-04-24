@@ -55,7 +55,7 @@
 	  <ul class="nav pull-right">
             <li class="divider-vertical"></li>
             <li><a href="/"> {{ mode }}</a></li>
-          </ul>
+	  </ul>
         </div>
       </div>
     </div>
@@ -63,12 +63,16 @@
       <div class="row-fluid">
 	<div class="span8">
 	  {% if error and error.__len__() > 0 %}
-            <div class="alert alert-error">
-              <a class="close" data-dismiss="alert" href="/runjob">&times;</a>
-              <strong>Error!</strong> {{ error }}
-            </div>
-	    {% endif %}
-	    <div class="well" style="border:2px solid black">
+          <div class="alert alert-error">
+            <a class="close" data-dismiss="alert" href="/viewjob">&times;</a>
+            <strong>Error!</strong> {{ error }}
+          </div>
+	  {% endif %}
+	  <div class="alert alert-info">
+            <a class="close" data-dismiss="alert" href="/viewjob">&times;</a>
+            <strong>Your current account balance is ${{ accBalance }}</strong> 
+          </div>
+	  <div class="well" style="border:2px solid black">
 	    <table style="width:100%;height:100%">
 	      <tr><td><h3>Provider History</h3></td></tr>
 	      <tr><td>
