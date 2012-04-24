@@ -11,6 +11,7 @@ import SocketServer
 import threading
 import ConfigParser
 import psutil
+import Queue
 from sendfile import sendfile
 from job import *
 
@@ -79,6 +80,7 @@ def handleTimeout(manager, node):
         manager.conn[node].close()
         del manager.neighbors[node]
         del manager.conn[node]
+        manager.nwStatus.put("REMOVE_NEIGHBOR," + node)
         nodefailMsg = manager.createNewMessage("RES_UNAVL", node)
         manager.sendToNeighbors(nodefailMsg)
         result = remove_node(manager.localIP, manager.port, node.split(":")[0],
@@ -90,6 +92,8 @@ def handleTimeout(manager, node):
         #TODO: Move to new function
         if node in manager.freeNodes:
             manager.freeNodes.remove(node)
+            manager.nwStatus.put("REMOVE_NODE," + node)
+
         if manager.jobmgr.status == 'JOBEXEC':
             if node in manager.jobmgr.reservedNodes and manager.jobmgr.reservedNodes[node] >= 0:
                     manager.jobmgr.unScheduledQueue.put(manager.jobmgr.reservedNodes[node])
@@ -106,6 +110,7 @@ class nwManager:
         self.neighbors = {}
         self.conn = {}
         self.lock = threading.Lock()
+        self.nwStatus = Queue.Queue(maxsize=0)
 
         # Read the config file
         config = ConfigParser.ConfigParser()
@@ -117,6 +122,7 @@ class nwManager:
             print "Neighbor is: " + n
             try:
                 self.conn[n] = createConn(n)
+                self.nwStatus.put("ADD_NEIGHBOR," + n)
                 aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, n,))
                 aliveTimer.start()
                 self.neighbors[n] = (aliveTimer,0)
@@ -163,6 +169,7 @@ class nwManager:
             if node in self.neighbors:
                 return
             self.conn[node] = createConn(node)
+            self.nwStatus.put("ADD_NEIGHBOR," + node)
             aliveTimer = threading.Timer(int(self.config['alivetimeout']),handleTimeout, args=(self, node,))
             aliveTimer.start()
             self.neighbors[node] = (aliveTimer,0)
@@ -184,6 +191,7 @@ class nwManager:
         avlMsg = self.createNewMessage("RES_AVL", self.localNodeId)
         self.lock.acquire()
         self.freeNodes.append((self.localIP + ":" + str(self.port)))
+        self.nwStatus.put("ADD_NODE," + self.localNodeId)
         self.sendToNeighbors(avlMsg)
         self.lock.release()
 
@@ -192,6 +200,7 @@ class nwManager:
         self.lock.acquire()
         if self.localNodeId in self.freeNodes:
             self.freeNodes.remove(self.localNodeId)
+            self.nwStatus.put("REMOVE_NODE," + self.localNodeId)
         self.sendToNeighbors(unavlMsg)
         self.lock.release()
 
@@ -208,6 +217,7 @@ class nwManager:
             aliveTimer.start()
             self.neighbors[msg.data] = (aliveTimer, 0)
             self.conn[msg.data] = client
+            self.nwStatus.put("ADD_NEIGHBOR," + msg.data)
             print "Added new node to neighbor " + msg.data
 
         elif msg.type == "HEARTBEAT":
@@ -227,6 +237,7 @@ class nwManager:
         elif msg.type == "RES_AVL":
             if msg.data not in self.freeNodes:
                 self.freeNodes.append(msg.data)
+                self.nwStatus.put("ADD_NODE," + msg.data)
             msg.ttl -= 1
             if msg.ttl != 0:
                 newMsg = self.createNewMessage(msg.type, msg.data, msg.ttl)
@@ -235,6 +246,7 @@ class nwManager:
         elif msg.type == "RES_UNAVL":
             if msg.data in self.freeNodes:
                 self.freeNodes.remove(msg.data)
+                self.nwStatus.put("REMOVE_NODE," + msg.data)
             if self.jobmgr.status == 'JOBEXEC':
                 if msg.data in self.jobmgr.reservedNodes and self.jobmgr.reservedNodes[msg.data] >= 0:
                     self.jobmgr.unScheduledQueue.put(self.jobmgr.reservedNodes[msg.data])
@@ -246,11 +258,14 @@ class nwManager:
 
         elif msg.type == "RESERVE_REQ":
             reserved = False
+            self.nwStatus.put("Received reserve request from " + msg.data)
             if self.jobmgr.status == 'AVAILABLE':
                 ackMsg = self.createNewMessage("ACK", self.localNodeId)
+                self.nwStatus.put("Sending ACK for reserve request from " + msg.data)
                 reserved = True
             else:
                 ackMsg = self.createNewMessage("NACK", self.localNodeId)
+                self.nwStatus.put("Sending NACK for reserve request from " + msg.data)
             try:
                 client.send(ackMsg)
                 if reserved == True:
@@ -264,6 +279,7 @@ class nwManager:
 
         elif msg.type == "RELEASE_REQ":
             client.close()
+            self.nwStatus.put("Received release request from " + msg.data)
             if self.jobmgr.curJob != None:
                 self.jobmgr.curJob.isTerminated = True
                 if self.jobmgr.curJob.process.is_running() == True:
@@ -296,6 +312,7 @@ class nwManager:
 
         elif msg.type == "CPU_REQUEST":
             respMsg = ""
+            self.nwStatus.put("Received CPU info request from " + msg.data)
             if self.jobmgr.status == 'AVAILABLE':
                 maxSpeed = 0.0
                 for info in cpu.info:

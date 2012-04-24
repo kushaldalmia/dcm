@@ -73,7 +73,11 @@ class jobManager:
             self.curJob = None
             return
         if self.curJob.isTerminated == False:
+            self.jobStatus.put('FINISHED_EXECUTION')
             self.nwmgr.sendResponse(self.curJob)
+        else:
+            self.jobStatus.put('EXECUTION_TERMINATED')
+            
         self.status = 'AVAILABLE'
         print 'Made node available!'
         self.curJob = None
@@ -165,7 +169,6 @@ def executeJob(jobmgr):
         job.process = psutil.Popen([sys.executable, job.srcFile], preexec_fn=setProcessLimits,
                              stdin=ipObj, stdout=opObj, stderr=opObj)
         job.process.wait(timeout=job.timeout)
-        jobmgr.jobStatus.put('FINISHED_EXECUTION')
         job.cost = int(math.ceil(float(time.time() - startTime)))
     except Exception, e:
         if job.process.is_running() == True:
