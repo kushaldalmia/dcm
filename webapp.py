@@ -54,9 +54,13 @@ def connect():
 	global mgr
 	global statusInfo
 	global jobCost
+	global providerHistory
+	global consumerHistory
 	mgr = jobManager(port, neighbor_list)
 	jobCost = ''
 	statusInfo = []
+	providerHistory = []
+	consumerHistory = []
 	t = threading.Thread(target=getJobStatus, args=(mgr.jobStatus, ))
 	t.daemon = True
 	t.start()
@@ -66,11 +70,15 @@ def connect():
 def disconnect(force):
 	error = ""
 	global appMode
+	global jobCost
+	global statusInfo
 	try:
 		global mgr
 		if mgr.curJob == None or len(force) > 0:
 			mgr.destroyManager()
 			mgr = None
+			jobCost = ''
+			statusInfo = []
 			appMode = 'Disconnected'
 		else:
 			error = "You have active jobs running on your system! Are you sure you want to disconnect?"
@@ -178,12 +186,13 @@ def viewjob():
 	global appMode
 	global providerHistory
 	global consumerHistory
+	global mgr
 
 	if appMode == 'Connected' or appMode == 'Disconnected':
 		error = "You need to be a Provider/Consumer to add/view jobs!"
 		return render_template('viewjob.html', mode=appMode, error=error)
 	else:
-		return render_template('viewjob.html', mode=appMode, providerHistory=providerHistory, consumerHistory=consumerHistory)
+		return render_template('viewjob.html', mode=appMode, providerHistory=providerHistory, consumerHistory=consumerHistory, accBalance=mgr.accountBalance)
 
 def get_open_port():
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
