@@ -26,10 +26,11 @@ def index():
 @app.route('/home', methods=['GET'])
 def home():
 	action = request.args.get('fn','')
+	force = request.args.get('force','')
 	if  action == 'connect':
 		return connect()
 	elif action == 'disconnect':
-		return disconnect()
+		return disconnect(force)
 	elif action == 'provider':
 		return provider()
 	elif action == 'consumer':
@@ -62,17 +63,17 @@ def connect():
 	appMode = 'Connected'
 	return render_template('index.html', mode=appMode, error="")
 
-def disconnect():
+def disconnect(force):
 	error = ""
 	global appMode
 	try:
 		global mgr
-		if mgr.curJob == None:
+		if mgr.curJob == None or len(force) > 0:
 			mgr.destroyManager()
 			mgr = None
 			appMode = 'Disconnected'
 		else:
-			error = "You have active jobs running on your system!"
+			error = "You have active jobs running on your system! Are you sure you want to disconnect?"
 	except:
 		error = "Server Internal Error!"
 	return render_template('index.html', mode=appMode, error=error)

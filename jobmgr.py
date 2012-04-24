@@ -68,6 +68,10 @@ class jobManager:
         return
 
     def completeJob(self):
+        if self.status == 'DISCONNECTED':
+            self.jobStatus.put('NODE_FAILURE')
+            self.curJob = None
+            return
         self.nwmgr.sendResponse(self.curJob)
         self.status = 'AVAILABLE'
         print 'Made node available!'

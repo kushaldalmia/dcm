@@ -48,8 +48,13 @@
 	<div class="span9">
 	  {% if error and error.__len__() > 0 %}
           <div class="alert alert-error">
-            <a class="close" data-dismiss="alert" href="/">&times;</a>
+	    {% if 'disconnect' in error %}
+	    <strong>Error!</strong> {{ error }} 
+            <a class="btn btn-danger" href="/home?fn=disconnect&force=true">Yes</a>
+	    {% else %}
+	    <a class="close" data-dismiss="alert" href="/">&times;</a>
             <strong>Error!</strong> {{ error }}
+	    {% endif %}
           </div>
           {% endif %}
 	  <table>
