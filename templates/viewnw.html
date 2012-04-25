@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <meta http-equiv="refresh" content="{{ '3;url=' + url_for('viewnw') }}" />
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/bootstrap.css') }}">
     <script src="{{ url_for('static', filename='js/jquery-1.7.2.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
@@ -12,34 +13,6 @@
         padding-bottom: 40px;
       }
     </style>
-    <script type="text/javascript">
-      $(function () {
-      var d1 = []
-      {% for i in range(0, providerHistory.__len__()) %}
-      d1.push([{{ i+1 }}, {{ providerHistory[i] }}])
-      {% endfor %}
-      $.plot($("#provplaceholder"), [
-      {
-      data: d1,
-      color: "rgb(50,205,50)",
-      bars: { show: true }
-      }
-      ]);
-
-      var d2 = []
-      {% for i in range(0, consumerHistory.__len__()) %}
-      d2.push([{{ i+1 }}, {{ consumerHistory[i] }}])
-      {% endfor %}
-      $.plot($("#consplaceholder"), [
-      {
-      data: d2,
-      color: "rgb(200, 20, 30)",
-      bars: { show: true }
-      }
-      ]);
-      
-      });
-    </script>
   </head>
   
   <body>
@@ -50,8 +23,8 @@
           <ul class="nav">
             <li><a href="/home">Home</a></li>
             <li><a href="/runjob">Current Jobs</a></li>
-            <li class="active"><a href="#">View Jobs</a></li>
-	    <li><a href="/viewnw">View Network</a></li>
+            <li><a href="/viewjob">View Jobs</a></li>
+	    <li class="active"><a href="#">View Network</a></li>
           </ul>
 	  <ul class="nav pull-right">
             <li class="divider-vertical"></li>
@@ -62,29 +35,52 @@
     </div>
     <div class="container-fluid">
       <div class="row-fluid">
-	<div class="span8">
+	<div class="span6">
 	  {% if error and error.__len__() > 0 %}
           <div class="alert alert-error">
             <a class="close" data-dismiss="alert" href="/viewjob">&times;</a>
             <strong>Error!</strong> {{ error }}
           </div>
 	  {% endif %}
-	  <div class="alert alert-info">
-            <a class="close" data-dismiss="alert" href="/viewjob">&times;</a>
-            <strong>Your current account balance is ${{ accBalance }}</strong> 
-          </div>
 	  <div class="well" style="border:2px solid black">
-	    <table style="width:100%;height:100%">
-	      <tr><td><h3>Provider History</h3></td></tr>
-	      <tr><td>
-		  <div id="provplaceholder" style="width:100%;height:300px"></div>
-	      </td></tr>
-	      <tr><td><h3>Consumer History</h3></td></tr>
-	      <tr><td>
-		  <div id="consplaceholder" style="width:100%;height:300px"></div>
-	      </td></tr>
+	    <table class="table table-bordered" style="width:100%;height:100%">
+	      <thead>
+		<tr><th align="center">Updates</th></tr>
+	      </thead>
+	      <tbody>
+		{% for update in updates %}
+		<tr><td align="center">{{ update }}</td></tr>
+		{% endfor %}
+	      </tbody>
 	    </table>
-	    </div>
+	  </div>
+	</div>
+	<div class="span3">
+	  <div class="well" style="border:2px solid black">
+	    <table class="table table-bordered" style="width:100%;height:100%">
+	      <thead>
+		<tr><th align="center">Available Nodes</th></tr>
+	      </thead>
+	      <tbody>
+		{% for node in availableInfo %}
+		<tr><td align="center">{{ node }}</td></tr>
+		{% endfor %}
+	      </tbody>
+	    </table>
+	  </div>
+	</div>
+	<div class="span3">
+	  <div class="well" style="border:2px solid black">
+	    <table class="table table-bordered" style="width:100%;height:100%">
+	      <thead>
+		<tr><th align="center">Neighbor Nodes</th></tr>
+	      </thead>
+	      <tbody>
+		{% for node in neighborInfo %}
+		<tr><td align="center">{{ node }}</td></tr>
+		{% endfor %}
+	      </tbody>
+	    </table>
 	  </div>
 	</div>
       </div>

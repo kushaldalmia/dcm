@@ -15,6 +15,10 @@ jobCost = ''
 runningJob = False
 providerHistory = []
 consumerHistory = []
+updates = []
+neighborInfo = []
+availableInfo = []
+
 
 @app.route('/', methods=['GET'])
 def index():
@@ -56,14 +60,24 @@ def connect():
 	global jobCost
 	global providerHistory
 	global consumerHistory
+	global updates
+	global neighborInfo
+	global availableInfo
+
 	mgr = jobManager(port, neighbor_list)
 	jobCost = ''
 	statusInfo = []
 	providerHistory = []
 	consumerHistory = []
+	updates = []
+	neighborInfo = []
+	availableInfo = []
 	t = threading.Thread(target=getJobStatus, args=(mgr.jobStatus, ))
 	t.daemon = True
 	t.start()
+	t1 = threading.Thread(target=getNWStatus, args=(mgr.nwmgr.nwStatus, ))
+	t1.daemon = True
+	t1.start()
 	appMode = 'Connected'
 	return render_template('index.html', mode=appMode, error="")
 
@@ -194,6 +208,19 @@ def viewjob():
 	else:
 		return render_template('viewjob.html', mode=appMode, providerHistory=providerHistory, consumerHistory=consumerHistory, accBalance=mgr.accountBalance)
 
+@app.route('/viewnw')
+def viewnw():
+	global appMode
+	global updates
+	global neighborInfo
+	global availableInfo
+	
+	if appMode == 'Disconnected':
+		error = "You need to be connected to the DCM network to see network activity!"
+		return render_template('viewnw.html', mode=appMode, error=error)
+	else:
+		return render_template('viewnw.html', mode=appMode, updates=updates, neighborInfo=neighborInfo, availableInfo=availableInfo)
+
 def get_open_port():
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(("",0))
@@ -226,6 +253,28 @@ def getJobStatus(statusQueue):
 			runningJob = False
 		print "Added " + status + " to statusInfo"
 		statusInfo.append(status)
+
+def getNWStatus(statusQueue):
+	global updates
+	global neighborInfo
+	global availableInfo
+	
+	while True:
+		info = statusQueue.get()
+		if 'ADD_NEIGHBOR' in info:
+			node = info.split(',')[1]
+			neighborInfo.append(node)
+		elif 'REMOVE_NEIGHBOR' in info:
+			node = info.split(',')[1]
+			neighborInfo.remove(node)
+		elif 'ADD_NODE' in info:
+			node = info.split(',')[1]
+			availableInfo.append(node)
+		elif 'REMOVE_NODE' in info:
+			node = info.split(',')[1]
+			availableInfo.remove(node)
+		else:
+			updates.append(info)
 
 if __name__== "__main__":
 	app.debug = True
