@@ -233,6 +233,7 @@ class nwManager:
                 for node in freeList:
                     if len(node) > 0 and len(node) < 22 and node not in self.freeNodes:
                         self.freeNodes.append(node)
+                        self.nwStatus.append("ADD_NODE," + node)
 
         elif msg.type == "RES_AVL":
             if msg.data not in self.freeNodes:
