@@ -140,6 +140,8 @@ def runjob():
 	global statusInfo
 	global jobCost
 	global runningJob
+	global mgr
+
 	if appMode == 'Connected' or appMode == 'Disconnected':
 		error = "You need to be a Provider/Consumer to add/view jobs!"
 		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
@@ -147,7 +149,7 @@ def runjob():
 		percentage = str(int(float(len(statusInfo)) * 12.5))
 	elif appMode == 'Consumer':
 		percentage = str(len(statusInfo) * 20)
-	return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage=percentage, jobCost=jobCost, runningJob=runningJob)
+	return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage=percentage, jobCost=jobCost, runningJob=runningJob, curJob=mgr.curJob)
 
 @app.route('/addjob', methods=['POST'])
 def addjob():
@@ -168,7 +170,7 @@ def addjob():
 	if request.form['merge'] and request.form['merge'] == "True":
 		mergeResults = True
 	splitByLine = True
-	if request.form['splitoption'] == "Bytes":
+	if request.form['splitoption'] and request.form['splitoption'] == "Bytes":
 		splitByLine = False
 	if os.path.isfile(request.form['ipfile']) == False:
 		error = "Input File Does Not Exist!"
@@ -191,7 +193,7 @@ def addjob():
 	mgr.addJob(job)
 	runningJob = True
 	if error == "":
-		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob, curJob=job)
 	else:
 		return redirect(url_for('/runjob'))
 

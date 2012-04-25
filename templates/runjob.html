@@ -87,6 +87,39 @@
             <strong>Error!</strong> {{ error }}
           </div>
           {% endif %}
+	  
+	  {% if mode == 'Consumer' and curJob != None %}
+	  <table class="table table-bordered">
+	    <thead>
+	    <tr>
+	      <th><strong>Job Attribute</strong></th>
+	      <th><strong>Value</strong></th>
+	    </tr>
+	    </thead>
+	    <tbody>
+	    <tr>
+	      <td><strong>Input File</strong></td>
+	      <td>{{ curJob.ipFile }}</td>
+	    </tr>
+	    <tr>
+	      <td><strong>Output File</strong></td>
+	      <td>{{ curJob.opFile }}</td>
+	    </tr>
+	    <tr>
+	      <td><strong>Source File</strong></td>
+	      <td>{{ curJob.srcFile }}</td>
+	    </tr>
+	    <tr>
+	      <td><strong>Nodes</strong></td>
+	      <td>{{ curJob.numNodes }}</td>
+	    </tr>
+	    <tr>
+	      <td><strong>Timeout</strong></td>
+	      <td>{{ curJob.timeout }}</td>
+	    </tr>
+	    </tbody>
+	  </table>
+	  {% endif %}
 	  {% if jobCost and jobCost.__len__() > 0 %}
 	  {% if mode == 'Provider' %}
           <div class="alert alert-success">
@@ -100,26 +133,26 @@
           </div>
 	  {% endif %}
 	  {% endif %}
+	  <h3>Current Job Status</h3>
 	  {% if percentage != '0' and percentage.__len__() > 0 %}
 	  <div class="progress progress-striped active">
 	    <div class="bar" style="width: {{ percentage }}%"></div>
 	  </div>
 	  {% endif %}
 	  <table class="table" align="center" cellpadding="5">
-	    <thead>
-	      <tr><th>Current Job Status</th></tr>
-	    </thead>
 	    <tbody>
-	    {% for i in range(0, statusInfo.__len__() - 1) %}
-	    <tr><td>
-		<p>{{ statusInfo[i] }}</p>
-	    </td></tr>
-	    {% endfor %}
-	    {% if statusInfo.__len__() > 0 %}
-	    <tr><td style="border:2px solid black">
-		<p>{{ statusInfo[statusInfo.__len__() - 1] }}</p>
-	    </td></tr>
-	    {% endif %}
+	     {% if statusInfo %}
+	     {% for i in range(0, statusInfo.__len__() - 1) %}
+	     <tr><td>
+		 <p>{{ statusInfo[i] }}</p>
+	     </td></tr>
+	     {% endfor %}
+	     {% if statusInfo.__len__() > 0 %}
+	     <tr><td style="border:2px solid black">
+		 <p>{{ statusInfo[statusInfo.__len__() - 1] }}</p>
+	     </td></tr>
+	     {% endif %}
+	     {% endif %}
 	    </tbody>
 	  </table>
 	</div>
