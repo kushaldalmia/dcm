@@ -261,11 +261,11 @@ class nwManager:
             self.nwStatus.put("Received reserve request from " + msg.data)
             if self.jobmgr.status == 'AVAILABLE':
                 ackMsg = self.createNewMessage("ACK", self.localNodeId)
-                self.nwStatus.put("Sending ACK for reserve request from " + msg.data)
+                self.nwStatus.put("Sending ACK for reserve request to " + msg.data)
                 reserved = True
             else:
                 ackMsg = self.createNewMessage("NACK", self.localNodeId)
-                self.nwStatus.put("Sending NACK for reserve request from " + msg.data)
+                self.nwStatus.put("Sending NACK for reserve request to " + msg.data)
             try:
                 client.send(ackMsg)
                 if reserved == True:
@@ -279,7 +279,7 @@ class nwManager:
 
         elif msg.type == "RELEASE_REQ":
             client.close()
-            self.nwStatus.put("Received release request from " + msg.data)
+            self.nwStatus.put("Received release request from " + msg.src)
             if self.jobmgr.curJob != None:
                 self.jobmgr.curJob.isTerminated = True
                 if self.jobmgr.curJob.process.is_running() == True:
@@ -312,7 +312,7 @@ class nwManager:
 
         elif msg.type == "CPU_REQUEST":
             respMsg = ""
-            self.nwStatus.put("Received CPU info request from " + msg.data)
+            self.nwStatus.put("Received CPU info request from " + msg.src)
             if self.jobmgr.status == 'AVAILABLE':
                 maxSpeed = 0.0
                 for info in cpu.info:
@@ -376,17 +376,20 @@ class nwManager:
         for node in freeList:
             try:
                 print "Sending RESERVE_REQ to node: " + node
+                self.nwStatus.put("Sending reserve request to " + node) 
                 sock = createConn(node)
                 sock.settimeout(5.0)
                 sock.send(reqMsg)
                 if self.waitForMsg(sock,'ACK') == True:
                     self.lock.acquire()
+                    self.nwStatus.put("Received ACK for reserve request from " + node) 
                     self.jobmgr.reservedNodes[node] = -1
                     self.lock.release()
                     sock.close()
                     return node
                 else:
                     sock.close()
+                    self.nwStatus.put("Received NACK for reserve request from " + node) 
                     print "RESERVE_REQ failed due to " + msg.type
             except Exception,e:
                 print "Exception:%s" % e
