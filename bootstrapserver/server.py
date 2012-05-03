@@ -66,7 +66,7 @@ def register(ip_add=None, port_no=None):
 	node_id = ip_add.strip() + ":" + port_no.strip()
 	if request.remote_addr != backupServer:
 		try:
-			requests.get("http://" + backupServer + "/register/" + ip_add + "/" + port_no + "/", timeout=1 )
+			requests.get("http://" + backupServer + "/register/" + ip_add + "/" + port_no + "/", timeout=3)
 		except:
 			traceback.print_exc()
 		pass
@@ -108,7 +108,7 @@ def disconnect(ip_add=None, port_no=None):
 	node_id = ip_add.strip() + ":" + port_no.strip()
 	if request.remote_addr != backupServer:
 		try:
-			requests.get("http://" + backupServer + "/disconnect/" + ip_add + "/" + port_no + "/", timeout=1)
+			requests.get("http://" + backupServer + "/disconnect/" + ip_add + "/" + port_no + "/", timeout=3)
 		except:
 			pass
 
@@ -128,7 +128,7 @@ def unregister(remote_ip=None, remote_port=None, ip_add=None, port_no=None):
 
 	if request.remote_addr != backupServer:
 		try:
-			requests.get("http://" + backupServer + "/unregister/" + remote_ip + "/" + remote_port + "/" + ip_add + "/" + port_no + "/", timeout=1)
+			requests.get("http://" + backupServer + "/unregister/" + remote_ip + "/" + remote_port + "/" + ip_add + "/" + port_no + "/", timeout=3)
 		except:
 			pass
 			  
@@ -186,7 +186,7 @@ def initBootstrap():
 	backupAvailable = True
 	port = int(bootstrapConfig['port'])
 	try:
-		requests.get("http://" + backupServer + "/", timeout=1)
+		requests.get("http://" + backupServer + "/", timeout=3)
 	except Exception, e:
 		traceback.print_exc()
 		backupAvailable = False
