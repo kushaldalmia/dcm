@@ -205,7 +205,7 @@ def viewjob():
 	global mgr
 
 	if appMode == 'Connected' or appMode == 'Disconnected':
-		error = "You need to be a Provider/Consumer to add/view jobs!"
+		error = "You need to be a Provider/Consumer to view your account balance!"
 		return render_template('viewjob.html', mode=appMode, error=error)
 	else:
 		return render_template('viewjob.html', mode=appMode, providerHistory=providerHistory, consumerHistory=consumerHistory, accBalance=mgr.accountBalance)
@@ -265,16 +265,20 @@ def getNWStatus(statusQueue):
 		info = statusQueue.get()
 		if 'ADD_NEIGHBOR' in info:
 			node = info.split(',')[1]
-			neighborInfo.append(node)
+			if node not in neighborInfo:
+				neighborInfo.append(node)
 		elif 'REMOVE_NEIGHBOR' in info:
 			node = info.split(',')[1]
-			neighborInfo.remove(node)
+			if node in neighborInfo:
+				neighborInfo.remove(node)
 		elif 'ADD_NODE' in info:
 			node = info.split(',')[1]
-			availableInfo.append(node)
+			if node not in availableInfo:
+				availableInfo.append(node)
 		elif 'REMOVE_NODE' in info:
 			node = info.split(',')[1]
-			availableInfo.remove(node)
+			if node in availableInfo:
+				availableInfo.remove(node)
 		else:
 			updates.append(info)
 
