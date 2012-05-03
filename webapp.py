@@ -144,7 +144,7 @@ def runjob():
 
 	if appMode == 'Connected' or appMode == 'Disconnected':
 		error = "You need to be a Provider/Consumer to add/view jobs!"
-		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob, curJob=None)
 	if appMode == 'Provider':
 		percentage = str(int(float(len(statusInfo)) * 12.5))
 	elif appMode == 'Consumer':
@@ -161,10 +161,10 @@ def addjob():
 	error = ""
 	if appMode != 'Consumer':
 		error = "You need to be in Consumer mode to run jobs!"
-		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob, curJob=None)
 	if mgr.curJob != None:
 		error = "You are currently running a job on DCM! Please wait for it to finish!"
-		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob)
+		return render_template('runjob.html', mode=appMode, statusInfo=statusInfo, percentage='', jobCost=jobCost, error=error, runningJob=runningJob, curJob=None)
 
 	mergeResults = False
 	if request.form['merge'] and request.form['merge'] == "True":
@@ -174,19 +174,19 @@ def addjob():
 		splitByLine = False
 	if os.path.isfile(request.form['ipfile']) == False:
 		error = "Input File Does Not Exist!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, error=error, curJob=None)
 	if os.path.isfile(request.form['srcfile']) == False:
 		error = "Source File Does Not Exist!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, error=error, curJob=None)
 	if os.path.exists(request.form['opfile']) == False:
 		error = "Output Directory Does Not Exist!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, error=error, curJob=None)
 	if int(request.form['numnodes']) <= 0:
 		error = "Number of nodes should be a positive number!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, error=error, curJob=None)
 	if int(request.form['timeout']) <= 0:
 		error = "Timeout should be a positive value (in secs)!"
-		return render_template('runjob.html', mode=appMode, error=error)
+		return render_template('runjob.html', mode=appMode, error=error, curJob=None)
 	job = Job(request.form['ipfile'], request.form['srcfile'], 
 		  request.form['opfile'], int(request.form['numnodes']), 
 		  mergeResults, splitByLine, int(request.form['timeout']))
