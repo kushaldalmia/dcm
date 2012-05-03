@@ -596,8 +596,8 @@ class nwManager:
         for node in freeList:
             try:
                 sock = createConn(node)
-                sock.send(cpureqMsg)
                 sock.settimeout(3.0)
+                sock.send(cpureqMsg)
                 data = recvMessage(sock)
                 msg = Message(data)
                 sock.close()
@@ -608,6 +608,7 @@ class nwManager:
                         break
             except Exception, e:
                 traceback.print_exc()
+                sock.close()
                 pass
         print curCPU
         sortedList = sorted(curCPU, key=curCPU.get, reverse=True)
