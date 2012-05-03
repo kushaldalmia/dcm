@@ -177,7 +177,7 @@ def executeJob(jobmgr):
         traceback.print_exc()
         jobmgr.jobStatus.put('FAILED_EXECUTION')
         job.cost = job.timeout
-        opObj.write("Job Execution Caused Exception!")
+        opObj.write("Job Execution Caused Exception! \n")
     ipObj.close()
     opObj.close()
     jobmgr.completeJob()
